@@ -16,6 +16,8 @@ Gbege is a mobile application that allows users to covertly upload audio files t
 - Recordings are activated by voice i.e use of preconfigured words(2).
 - Phone vibrates after upload with no visible ui.
 - After secretly uploading, the user has time(30mins) to vet before it is available for listeners.
+- There will be ability to download, delete(owner only) and share(owner only).
+- Uploads will be deleted after 6 months.
 - There should be ability to hide the app icon (show with voice).
 
 ## Tech Stack
