@@ -28,12 +28,12 @@ const (
 )
 
 // NewToken generates a new random token.
-func NewToken() string {
+func NewToken() []byte {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		panic(err)
 	}
-	return base64.URLEncoding.EncodeToString(b)
+	return b
 }
 
 // DecodeHash decodes a hash string into a Params struct.

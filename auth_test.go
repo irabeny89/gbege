@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 )
@@ -9,11 +10,11 @@ func TestNewToken(t *testing.T) {
 	token1 := NewToken()
 	token2 := NewToken()
 
-	if token1 == "" || token2 == "" {
+	if len(token1) == 0 || len(token2) == 0 {
 		t.Error("NewToken returned empty string")
 	}
 
-	if token1 == token2 {
+	if bytes.Equal(token1, token2) {
 		t.Error("NewToken generated duplicate tokens")
 	}
 }

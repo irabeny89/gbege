@@ -9,7 +9,8 @@ Gbege is a mobile application that allows users to covertly upload audio files t
 ## How does it work?
 
 - A user creates a profile and creates spaces where uploads will be sent.
-- There are public and private spaces.
+- There will be feeds where users can comment or upload media to.
+- There will be public and private spaces.
 - Private spaces are only available to permitted users.
 - Public spaces are available to all users.
 - Recordings are done in the background without any visibility for a certain duration(20mins).
