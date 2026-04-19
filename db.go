@@ -17,21 +17,17 @@ type DbReader struct {
 	*sql.DB
 }
 
-// DbPool is a pool of database connections.
-type DbPool struct {
-	// Writer pool (single connection). E.g. INSERT, UPDATE, DELETE.
-	Writer *DbWriter
-	// Reader pool (multi connections). E.g. SELECT.
-	Reader *DbReader
-}
-
-type DbConn struct {
-	driver string
-	url    string
+// DbClient is a client that is used for reading and writing to the database.
+type DbClient struct {
+	// Read pool (multi connections). E.g. SELECT.
+	readPool *DbReader
+	// Write pool (single connection). E.g. INSERT, UPDATE, DELETE.
+	writePool *DbWriter
 }
 
 const dbPath = "app.db"
 const driver = "sqlite"
+const scheme = "file"
 
 var commonPragma = []string{
 	"journal_mode(WAL)",
@@ -39,76 +35,79 @@ var commonPragma = []string{
 	"foreign_keys(ON)",
 }
 
-// newDbReader creates a read-only database handle.
-func newDbReader() (*DbReader, error) {
-	// read-only mode to prevent accidental writes for db reader.
-	readerMode := []string{"ro"}
-	readerQuery := url.Values{
+// Query executes a query that returns rows, using the read pool. E.g SELECT * FROM users
+func (c *DbClient) Query(query string, args ...any) (*sql.Rows, error) {
+	return c.readPool.Query(query, args...)
+}
+
+// QueryRow executes a query that returns a single row, using the read pool. E.g SELECT * FROM users WHERE id = 1
+func (c *DbClient) QueryRow(query string, args ...any) *sql.Row {
+	return c.readPool.QueryRow(query, args...)
+}
+
+// Exec executes a query that returns a result, using the write pool. E.g INSERT, UPDATE, DELETE, CREATE, DROP, etc
+func (c *DbClient) Exec(query string, args ...any) (sql.Result, error) {
+	return c.writePool.Exec(query, args...)
+}
+
+// newReadPool creates a read-only database handle.
+func newReadPool() (*DbReader, error) {
+	query := url.Values{
 		"_pragma": commonPragma,
-		"mode":    readerMode,
+		// read-only mode to prevent accidental writes for db reader.
+		"mode": []string{"ro"},
 	}
-	readerUrl := url.URL{
-		Scheme:   "file",
+	url := url.URL{
+		Scheme:   scheme,
 		Path:     dbPath,
-		RawQuery: readerQuery.Encode(),
+		RawQuery: query.Encode(),
 	}
-	reader, err := sql.Open(driver, readerUrl.String())
+	db, err := sql.Open(driver, url.String())
 	if err != nil {
 		return nil, err
 	}
-	reader.SetMaxOpenConns(0) // unlimited reads
+	db.SetMaxOpenConns(100)
 
-	return &DbReader{reader}, nil
+	return &DbReader{db}, nil
 }
 
-// newDbWriter creates a database handle for writing to the database.
-func newDbWriter() (*DbWriter, error) {
-	// normal sync mode for db writer.
-	writerPragma := []string{"synchronous(NORMAL)"}
-	writerQuery := url.Values{
-		"_pragma": append(writerPragma, commonPragma...),
+// newWritePool creates a database handle for writing to the database.
+func newWritePool() (*DbWriter, error) {
+	query := url.Values{
+		// normal sync mode for db writer.
+		"_pragma": append(commonPragma, "synchronous(NORMAL)"),
 	}
-	writerUrl := url.URL{
-		Scheme:   "file",
+	url := url.URL{
+		Scheme:   scheme,
 		Path:     dbPath,
-		RawQuery: writerQuery.Encode(),
+		RawQuery: query.Encode(),
 	}
-	writer, wErr := sql.Open(driver, writerUrl.String())
+	db, wErr := sql.Open(driver, url.String())
 	if wErr != nil {
 		return nil, wErr
 	}
 	// Limits to 1 connection pool to prevent "database is locked" errors.
-	writer.SetMaxOpenConns(1)
+	db.SetMaxOpenConns(1)
 
-	return &DbWriter{writer}, nil
+	return &DbWriter{db}, nil
 }
 
-// NewDB creates a new database connection with default config.
-func NewDB() (*sql.DB, error) {
-	db, err := sql.Open(driver, dbPath)
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
-}
-
-// NewDbPool creates a new database connection pool with custom configs.
-func NewDbPool() (*DbPool, error) {
+func NewDbClient() (*DbClient, error) {
 	//! NOTE: sqlite WAL mode requires -shm and -wal files.
 	//! Initialize the writer connection first
 	//! this creates -shm and -wal files because the reader(ro) cannot create them.
 
-	writer, wErr := newDbWriter()
+	w, wErr := newWritePool()
 	if wErr != nil {
 		return nil, wErr
 	}
-	reader, rErr := newDbReader()
+	r, rErr := newReadPool()
 	if rErr != nil {
 		return nil, rErr
 	}
 
-	return &DbPool{
-		Reader: reader,
-		Writer: writer,
+	return &DbClient{
+		readPool:  r,
+		writePool: w,
 	}, nil
 }
