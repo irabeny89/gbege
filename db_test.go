@@ -65,7 +65,7 @@ func TestDbClient_ExecAndQuery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Exec failed to insert: %v", err)
 	}
-	
+
 	id, err := res.LastInsertId()
 	if err != nil {
 		t.Fatalf("Failed to get last insert id: %v", err)
@@ -83,7 +83,7 @@ func TestDbClient_ExecAndQuery(t *testing.T) {
 
 	// 3. Test Query (Read multi)
 	client.Exec("INSERT INTO test_users (name) VALUES (?)", "Bob")
-	
+
 	rows, err := client.Query("SELECT name FROM test_users ORDER BY id ASC")
 	if err != nil {
 		t.Fatalf("Query failed: %v", err)

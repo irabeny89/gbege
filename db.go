@@ -7,25 +7,16 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// DbWriter is a wrapper around sql.DB that is used for writing to the database.
-type DbWriter struct {
-	*sql.DB
-}
-
-// DbReader is a wrapper around sql.DB that is used for reading from the database.
-type DbReader struct {
-	*sql.DB
-}
-
 // DbClient is a client that is used for reading and writing to the database.
 type DbClient struct {
 	// Read pool (multi connections). E.g. SELECT.
-	readPool *DbReader
+	readPool *sql.DB
 	// Write pool (single connection). E.g. INSERT, UPDATE, DELETE.
-	writePool *DbWriter
+	writePool *sql.DB
 }
 
 var dbPath = "app.db"
+
 const driver = "sqlite"
 const scheme = "file"
 
@@ -51,7 +42,7 @@ func (c *DbClient) Exec(query string, args ...any) (sql.Result, error) {
 }
 
 // newReadPool creates a read-only database handle.
-func newReadPool() (*DbReader, error) {
+func newReadPool() (*sql.DB, error) {
 	query := url.Values{
 		"_pragma": commonPragma,
 		// read-only mode to prevent accidental writes for db reader.
@@ -68,11 +59,11 @@ func newReadPool() (*DbReader, error) {
 	}
 	db.SetMaxOpenConns(100)
 
-	return &DbReader{db}, nil
+	return db, nil
 }
 
 // newWritePool creates a database handle for writing to the database.
-func newWritePool() (*DbWriter, error) {
+func newWritePool() (*sql.DB, error) {
 	query := url.Values{
 		// normal sync mode for db writer.
 		"_pragma": append(commonPragma, "synchronous(NORMAL)"),
@@ -89,7 +80,7 @@ func newWritePool() (*DbWriter, error) {
 	// Limits to 1 connection pool to prevent "database is locked" errors.
 	db.SetMaxOpenConns(1)
 
-	return &DbWriter{db}, nil
+	return db, nil
 }
 
 func NewDbClient() (*DbClient, error) {

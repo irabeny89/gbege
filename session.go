@@ -20,7 +20,7 @@ const ttl = 30 * 24 * time.Hour
 // MARK: - Storage
 
 // CreateSessionTable creates the sessions table in the database.
-func CreateSessionTable(db DbWriter) error {
+func CreateSessionTable(db DbClient) error {
 	_, err := db.Exec(
 		`
 		CREATE TABLE IF NOT EXISTS sessions (
@@ -47,7 +47,7 @@ func CreateSessionTable(db DbWriter) error {
 }
 
 // SaveSession creates a new session for a user in the database.
-func SaveSession(db DbWriter, userId int) error {
+func SaveSession(db DbClient, userId int) error {
 	t := time.Now()
 	_, err := db.Exec(
 		`
@@ -64,7 +64,7 @@ func SaveSession(db DbWriter, userId int) error {
 }
 
 // GetSession retrieves a session from the database by its ID.
-func GetSession(db DbReader, id []byte) (Session, error) {
+func GetSession(db DbClient, id []byte) (Session, error) {
 	var session Session
 	err := db.QueryRow(
 		`
@@ -83,7 +83,7 @@ func GetSession(db DbReader, id []byte) (Session, error) {
 
 // TODO: create a job to run this everyday
 // DeleteSession deletes a session from the database.
-func DeleteSession(db DbWriter, id []byte) error {
+func DeleteSession(db DbClient, id []byte) error {
 	_, err := db.Exec(
 		`
 		DELETE FROM sessions
@@ -99,7 +99,7 @@ func DeleteSession(db DbWriter, id []byte) error {
 }
 
 // DeleteExpiredSessions deletes all expired sessions from the database.
-func DeleteExpiredSessions(db DbWriter) error {
+func DeleteExpiredSessions(db DbClient) error {
 	_, err := db.Exec(
 		`
 		DELETE FROM sessions

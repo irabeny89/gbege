@@ -14,7 +14,7 @@ type User struct {
 
 // MARK: - Storage
 
-func CreateUserTable(db DbWriter) error {
+func CreateUserTable(db DbClient) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS users (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,7 +38,7 @@ func CreateUserTable(db DbWriter) error {
 	return nil
 }
 
-func SaveUser(db DbWriter, fullName, alias, plainPassword string) error {
+func SaveUser(db DbClient, fullName, alias, plainPassword string) error {
 	_, err := db.Exec(`
 		INSERT INTO users (full_name, alias, password) VALUES (?, ?, ?)
 	`, fullName, alias, HashPassword(plainPassword))
@@ -48,7 +48,7 @@ func SaveUser(db DbWriter, fullName, alias, plainPassword string) error {
 	return nil
 }
 
-func GetUser(db DbReader, id int) (User, error) {
+func GetUser(db DbClient, id int) (User, error) {
 	var user User
 	err := db.QueryRow(`
 		SELECT id, full_name, alias, password, created_at, updated_at 
