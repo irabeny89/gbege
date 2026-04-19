@@ -25,7 +25,7 @@ type DbClient struct {
 	writePool *DbWriter
 }
 
-const dbPath = "app.db"
+var dbPath = "app.db"
 const driver = "sqlite"
 const scheme = "file"
 
