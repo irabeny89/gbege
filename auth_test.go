@@ -22,11 +22,7 @@ func TestNewToken(t *testing.T) {
 func TestHashAndVerifyPassword(t *testing.T) {
 	password := "my-super-secret-password"
 
-	hash, err := HashPassword(password)
-	if err != nil {
-		t.Fatalf("HashPassword returned an error: %v", err)
-	}
-
+	hash := HashPassword(password)
 	if !strings.HasPrefix(hash, "$argon2id$") {
 		t.Errorf("Hash does not have the expected prefix. Got: %s", hash)
 	}
@@ -66,10 +62,7 @@ func TestDecodeHash(t *testing.T) {
 	}
 
 	// Valid hash generated using HashPassword
-	hash, err := HashPassword("test-password")
-	if err != nil {
-		t.Fatalf("Failed to hash password for testing: %v", err)
-	}
+	hash := HashPassword("test-password")
 
 	params, err := DecodeHash(hash)
 	if err != nil {
@@ -79,7 +72,7 @@ func TestDecodeHash(t *testing.T) {
 	if params.Memory == 0 || params.Iterations == 0 || params.Parallelism == 0 {
 		t.Error("DecodeHash failed to correctly parse parameters")
 	}
-	
+
 	if len(params.Salt) == 0 || len(params.Hash) == 0 {
 		t.Error("DecodeHash failed to correctly parse salt and hash")
 	}

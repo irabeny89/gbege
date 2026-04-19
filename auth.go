@@ -76,12 +76,10 @@ func DecodeHash(encodedHash string) (*Params, error) {
 }
 
 // HashPassword hashes a password.
-func HashPassword(password string) (string, error) {
+func HashPassword(password string) string {
 	// 1. Generate a cryptographically secure random salt
 	salt := make([]byte, saltLength)
-	if _, err := rand.Read(salt); err != nil {
-		return "", err
-	}
+	rand.Read(salt)
 
 	// 2. Generate the hash
 	hash := argon2.IDKey(
@@ -108,7 +106,7 @@ func HashPassword(password string) (string, error) {
 		b64Hash,
 	)
 
-	return encodedHash, nil
+	return encodedHash
 }
 
 // VerifyPassword verifies a password against a salt and hash.

@@ -31,14 +31,14 @@ func TestSessionLifecycle(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	err := CreateSessionTable(db)
+	err := CreateSessionTable(DbWriter{db})
 	if err != nil {
 		t.Fatalf("CreateSessionTable failed: %v", err)
 	}
 
 	userId := 1
 
-	err = SaveSession(db, userId)
+	err = SaveSession(DbWriter{db}, userId)
 	if err != nil {
 		t.Fatalf("SaveSession failed: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestSessionLifecycle(t *testing.T) {
 		t.Fatalf("Failed to query created session: %v", err)
 	}
 
-	session, err := GetSession(db, sessionId)
+	session, err := GetSession(DbReader{db}, sessionId)
 	if err != nil {
 		t.Fatalf("GetSession failed: %v", err)
 	}
@@ -62,12 +62,12 @@ func TestSessionLifecycle(t *testing.T) {
 		t.Error("Expected ExpiresAt to be set")
 	}
 
-	err = DeleteSession(db, sessionId)
+	err = DeleteSession(DbWriter{db}, sessionId)
 	if err != nil {
 		t.Fatalf("DeleteSession failed: %v", err)
 	}
 
-	_, err = GetSession(db, sessionId)
+	_, err = GetSession(DbReader{db}, sessionId)
 	if err == nil {
 		t.Error("Expected error when getting deleted session, but got nil")
 	}
@@ -77,7 +77,7 @@ func TestDeleteExpiredSessions(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	err := CreateSessionTable(db)
+	err := CreateSessionTable(DbWriter{db})
 	if err != nil {
 		t.Fatalf("CreateSessionTable failed: %v", err)
 	}
@@ -106,17 +106,17 @@ func TestDeleteExpiredSessions(t *testing.T) {
 		t.Fatalf("Failed to insert valid session: %v", err)
 	}
 
-	err = DeleteExpiredSessions(db)
+	err = DeleteExpiredSessions(DbWriter{db})
 	if err != nil {
 		t.Fatalf("DeleteExpiredSessions failed: %v", err)
 	}
 
-	_, err = GetSession(db, expiredId)
+	_, err = GetSession(DbReader{db}, expiredId)
 	if err == nil {
 		t.Error("Expected expired session to be deleted, but it was found")
 	}
 
-	_, err = GetSession(db, validId)
+	_, err = GetSession(DbReader{db}, validId)
 	if err != nil {
 		t.Errorf("Expected valid session to exist, but got error: %v", err)
 	}

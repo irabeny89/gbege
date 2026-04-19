@@ -20,6 +20,8 @@ Gbege is a mobile application that allows users to covertly upload audio files t
 - There will be ability to download, delete(owner only) and share(owner only).
 - Uploads will be deleted after 6 months.
 - There should be ability to hide the app icon (show with voice).
+- User should be able to delete their account.
+- Deleted accounts should be permanently deleted after 6 months.
 
 ## Tech Stack
 
