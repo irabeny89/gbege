@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"database/sql"
+	"time"
+)
 
 type User struct {
 	Id        int64     `json:"id"`
@@ -25,8 +28,8 @@ func CreateUserTable(db DbClient) error {
 			password TEXT NOT NULL,
 			deleted_at DATETIME,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		)
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
 
 		CREATE TRIGGER update_user_updated_at 
 		AFTER UPDATE ON users
@@ -53,26 +56,34 @@ func SaveUser(db DbClient, fullName, alias, plainPassword string) error {
 
 func GetUser(db DbClient, id int) (User, error) {
 	var user User
+	var deletedAt sql.NullTime
 	err := db.QueryRow(`
-		SELECT id, photo, name, alias, password, created_at, updated_at 
+		SELECT id, COALESCE(photo, ''), name, alias, password, deleted_at, created_at, updated_at 
 		FROM users
 		WHERE id = ?
-	`, id).Scan(&user.Id, &user.Photo, &user.Name, &user.Alias, &user.Password, &user.CreatedAt, &user.UpdatedAt)
+	`, id).Scan(&user.Id, &user.Photo, &user.Name, &user.Alias, &user.Password, &deletedAt, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return user, err
+	}
+	if deletedAt.Valid {
+		user.DeletedAt = deletedAt.Time
 	}
 	return user, nil
 }
 
 func GetUserByAlias(db DbClient, alias string) (User, error) {
 	var user User
+	var deletedAt sql.NullTime
 	err := db.QueryRow(`
-		SELECT id, photo, name, alias, password, created_at, updated_at 
+		SELECT id, COALESCE(photo, ''), name, alias, password, deleted_at, created_at, updated_at 
 		FROM users
 		WHERE alias = ?
-	`, alias).Scan(&user.Id, &user.Photo, &user.Name, &user.Alias, &user.Password, &user.CreatedAt, &user.UpdatedAt)
+	`, alias).Scan(&user.Id, &user.Photo, &user.Name, &user.Alias, &user.Password, &deletedAt, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return user, err
+	}
+	if deletedAt.Valid {
+		user.DeletedAt = deletedAt.Time
 	}
 	return user, nil
 }
