@@ -7,6 +7,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// MARK: - Type, Const & Var
+
 // DbClient is a client that is used for reading and writing to the database.
 type DbClient struct {
 	// Read pool (multi connections). E.g. SELECT.
@@ -26,6 +28,8 @@ var commonPragma = []string{
 	"foreign_keys(ON)",
 }
 
+// MARK: - Methods
+
 // Query executes a query that returns rows, using the read pool. E.g SELECT * FROM users
 func (c *DbClient) Query(query string, args ...any) (*sql.Rows, error) {
 	return c.readPool.Query(query, args...)
@@ -40,6 +44,15 @@ func (c *DbClient) QueryRow(query string, args ...any) *sql.Row {
 func (c *DbClient) Exec(query string, args ...any) (sql.Result, error) {
 	return c.writePool.Exec(query, args...)
 }
+
+// Close gracefully closes all db pools
+func (c *DbClient) Close() error {
+	c.readPool.Close()
+	c.writePool.Close()
+	return nil
+}
+
+// MARK: - Private Func
 
 // newReadPool creates a read-only database handle.
 func newReadPool() (*sql.DB, error) {
@@ -57,7 +70,7 @@ func newReadPool() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(100)
+	db.SetMaxOpenConns(50)
 
 	return db, nil
 }
@@ -73,9 +86,9 @@ func newWritePool() (*sql.DB, error) {
 		Path:     dbPath,
 		RawQuery: query.Encode(),
 	}
-	db, wErr := sql.Open(driver, url.String())
-	if wErr != nil {
-		return nil, wErr
+	db, err := sql.Open(driver, url.String())
+	if err != nil {
+		return nil, err
 	}
 	// Limits to 1 connection pool to prevent "database is locked" errors.
 	db.SetMaxOpenConns(1)
@@ -97,8 +110,11 @@ func NewDbClient() (*DbClient, error) {
 		return nil, rErr
 	}
 
-	return &DbClient{
+	client := &DbClient{
 		readPool:  r,
 		writePool: w,
-	}, nil
+	}
+
+	return client, nil
 }
+
