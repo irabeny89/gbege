@@ -25,11 +25,13 @@ func CreateSessionTable(db DbClient) error {
 		`
 		CREATE TABLE IF NOT EXISTS sessions (
 			id BLOB PRIMARY KEY,
-			user_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL UNIQUE,
 			expires_at DATETIME NOT NULL,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (user_id) REFERENCES users(id)
+			ON DELETE CASCADE
+			ON UPDATE CASCADE
 		)
 
 		CREATE TRIGGER update_session_updated_at 
