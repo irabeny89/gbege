@@ -3,16 +3,20 @@ package main
 import (
 	"log/slog"
 	"os"
+	"sync"
 )
 
-type AppLogger struct {
-	slog.Logger
-}
+var (
+	instance *slog.Logger
+	once     sync.Once
+)
 
-// MARK: - Type, Const & Var
-
-func NewAppLogger() *AppLogger {
-	return &AppLogger{
-		Logger: *slog.New(slog.NewJSONHandler(os.Stdout, nil)),
-	}
+// GetLogger returns a singleton logger instance.
+func GetLogger() *slog.Logger {
+	once.Do(func() {
+		instance = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+		}))
+	})
+	return instance
 }

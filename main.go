@@ -5,13 +5,24 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	goenvy "github.com/irabeny89/go-envy"
 )
 
 func main() {
-	client, _ := NewDbClient()
-	logger := NewAppLogger()
+	goenvy.LoadEnv() // load environment variables from .env file
+	logger.Info("App environment", "env", os.Getenv("APP_ENV"))
 
-	addr := ":8080" // default host address
+	var (
+		client, _ = NewDbClient()
+		logger    = GetLogger()
+		// default host address. `:0` means random port
+		addr      = ":0"
+		// Create a channel to listen for OS signals
+		// We use a buffer of 1 so we don't miss the signal
+		sigChan   = make(chan os.Signal, 1)
+	)
+
 	// set address port if PORT env var exist
 	p, pExist := os.LookupEnv("PORT")
 	if pExist {
@@ -21,10 +32,6 @@ func main() {
 		logger.Warn("PORT env var not found", "PORT", p)
 	}
 
-	// Create a channel to listen for OS signals
-	// We use a buffer of 1 so we don't miss the signal
-	sigChan := make(chan os.Signal, 1)
-
 	// Register the signals we want to capture
 	// SIGINT = Ctrl+C, SIGTERM = Standard termination (Docker/Linux)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -32,14 +39,14 @@ func main() {
 	// Run your app logic in a separate goroutine if needed,
 	// or just wait for the signal here.
 	go func() {
-		logger.Info("Server is running...")
+		logger.Info("Server is running", "addr", addr)
 		// Your web server or app logic goes here
 		if err := http.ListenAndServe(addr, nil); err != nil {
 			logger.Error("Server closed", "err", err)
 		}
 	}()
 
-	go CleanupDeletedUsers(client, logger)
+	go CleanupDeletedUsers(client)
 
 	//! Block here until a signal is received
 	sig := <-sigChan

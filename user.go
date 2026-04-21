@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+// MARK: - Type, Const & Var
+
+var (
+	logger = GetLogger()
+)
+
 type User struct {
 	Id        int64     `json:"id"`
 	Photo     string    `json:"photo"`
@@ -122,7 +128,7 @@ func UpdateUserPhoto(db DbClient, id int, photo string) error {
 }
 
 // CleanupDeletedUsers removes users that have been soft deleted for more than 6 months.
-func CleanupDeletedUsers(db *DbClient, logger *AppLogger) {
+func CleanupDeletedUsers(db *DbClient) {
 	ticker := time.NewTicker(time.Hour)
 	for range ticker.C {
 		logger.Info("Cleaning up deleted users")
