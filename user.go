@@ -120,3 +120,17 @@ func UpdateUserPhoto(db DbClient, id int, photo string) error {
 	}
 	return nil
 }
+
+// CleanupDeletedUsers removes users that have been soft deleted for more than 6 months.
+func CleanupDeletedUsers(db *DbClient, logger *AppLogger) {
+	ticker := time.NewTicker(time.Hour)
+	for range ticker.C {
+		logger.Info("Cleaning up deleted users")
+		_, err := db.Exec(`
+			DELETE FROM users where deleted_at < DATE('now', '-6 months');
+		`)
+		if err != nil {
+			logger.Error("Error cleaning up deleted users", "err", err)
+		}
+	}
+}

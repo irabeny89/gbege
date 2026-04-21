@@ -39,6 +39,8 @@ func main() {
 		}
 	}()
 
+	go CleanupDeletedUsers(client, logger)
+
 	//! Block here until a signal is received
 	sig := <-sigChan
 	logger.Info("Shutting down...", "signal", sig)
