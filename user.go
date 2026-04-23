@@ -7,10 +7,6 @@ import (
 
 // MARK: - Type, Const & Var
 
-var (
-	logger = GetLogger()
-)
-
 type User struct {
 	Id        int64     `json:"id"`
 	Photo     string    `json:"photo"`
@@ -131,12 +127,12 @@ func UpdateUserPhoto(db DbClient, id int, photo string) error {
 func CleanupDeletedUsers(db *DbClient) {
 	ticker := time.NewTicker(time.Hour)
 	for range ticker.C {
-		logger.Info("Cleaning up deleted users")
+		Log.Info("Cleaning up deleted users")
 		_, err := db.Exec(`
 			DELETE FROM users where deleted_at < DATE('now', '-6 months');
 		`)
 		if err != nil {
-			logger.Error("Error cleaning up deleted users", "err", err)
+			Log.Error("Error cleaning up deleted users", "err", err)
 		}
 	}
 }

@@ -14,12 +14,10 @@ func cleanupTestDb(db string) {
 }
 
 func TestNewDbClient(t *testing.T) {
-	// Temporarily override dbPath to a test file
-	originalDbPath := dbPath
 	testDbPath := "test_new_dbclient.db"
-	dbPath = testDbPath
+	os.Setenv("DB_PATH", testDbPath)
 	defer func() {
-		dbPath = originalDbPath
+		os.Unsetenv("DB_PATH")
 		cleanupTestDb(testDbPath)
 	}()
 
@@ -30,6 +28,10 @@ func TestNewDbClient(t *testing.T) {
 	defer client.writePool.Close()
 	defer client.readPool.Close()
 
+	if err := client.Ping(); err != nil {
+		t.Fatalf("Failed to ping database: %v", err)
+	}
+
 	if client.readPool == nil {
 		t.Error("Expected readPool to be initialized")
 	}
@@ -39,12 +41,10 @@ func TestNewDbClient(t *testing.T) {
 }
 
 func TestDbClient_ExecAndQuery(t *testing.T) {
-	// Temporarily override dbPath to a test file
-	originalDbPath := dbPath
 	testDbPath := "test_exec_query.db"
-	dbPath = testDbPath
+	os.Setenv("DB_PATH", testDbPath)
 	defer func() {
-		dbPath = originalDbPath
+		os.Unsetenv("DB_PATH")
 		cleanupTestDb(testDbPath)
 	}()
 
@@ -82,7 +82,10 @@ func TestDbClient_ExecAndQuery(t *testing.T) {
 	}
 
 	// 3. Test Query (Read multi)
-	client.Exec("INSERT INTO test_users (name) VALUES (?)", "Bob")
+	_, err = client.Exec("INSERT INTO test_users (name) VALUES (?)", "Bob")
+	if err != nil {
+		t.Fatalf("Exec failed to insert: %v", err)
+	}
 
 	rows, err := client.Query("SELECT name FROM test_users ORDER BY id ASC")
 	if err != nil {

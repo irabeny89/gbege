@@ -2,12 +2,14 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"net/url"
+	"os"
 
 	_ "modernc.org/sqlite"
 )
 
-// MARK: - Type, Const & Var
+// MARK: - Structs
 
 // DbClient is a client that is used for reading and writing to the database.
 type DbClient struct {
@@ -17,19 +19,73 @@ type DbClient struct {
 	writePool *sql.DB
 }
 
-var dbPath = "app.db"
-
-const driver = "sqlite"
-const scheme = "file"
-
-var commonPragma = []string{
-	"journal_mode(WAL)",
-	"busy_timeout(5000)",
-	"foreign_keys(ON)",
+type sqliteConfig struct {
+	// dbPath is the path to the database file E.g "app.db".
+	dbPath string
+	// driver is the driver to use for the database connection. E.g "sqlite".
+	driver string
+	// url is the Data Source Name used to connect to the database. E.g ":memory:" or "sqlite:///app.db"
+	url string
+	// pragmas are the pragmas to use for the database connection. E.g []string{"journal_mode(WAL)", "busy_timeout(5000)", "foreign_keys(ON)"}
+	pragma []string
+	// mode is the mode to use for the database connection (e.g. "ro", "rw", "rwc" & "memory". Default is "rwc" ).
+	mode string
 }
+
+// MARK: - Interfaces
+
+// MARK: - Const & Var
 
 // MARK: - Methods
 
+// newPool creates a new database connection pool for sqlite (or other drivers)
+func (cnf *sqliteConfig) newPool(maxConn int) (*sql.DB, error) {
+	if cnf.driver == "" {
+		return nil, errors.New("driver is not set")
+	}
+	if cnf.url != "" {
+		return sql.Open(cnf.driver, cnf.url)
+	}
+	var (
+		scheme = "file"
+	)
+	if cnf.dbPath == "" {
+		cnf.dbPath = "app.db"
+	}
+	if cnf.mode == "" {
+		cnf.mode = "rwc"
+	}
+	query := url.Values{
+		"mode": []string{cnf.mode},
+	}
+	if len(cnf.pragma) > 0 {
+		query["_pragma"] = cnf.pragma
+	}
+	url := url.URL{
+		Scheme:   scheme,
+		Path:     cnf.dbPath,
+		RawQuery: query.Encode(),
+	}
+	db, err := sql.Open(cnf.driver, url.String())
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(maxConn)
+	return db, nil
+}
+
+// Ping checks if the database connection is alive.
+func (c *DbClient) Ping() error {
+	err := c.readPool.Ping()
+	if err != nil {
+		return err
+	}
+	err = c.writePool.Ping()
+	if err != nil {
+		return err
+	}
+	return nil
+}
 // Query executes a query that returns rows, using the read pool. E.g SELECT * FROM users
 func (c *DbClient) Query(query string, args ...any) (*sql.Rows, error) {
 	return c.readPool.Query(query, args...)
@@ -45,69 +101,49 @@ func (c *DbClient) Exec(query string, args ...any) (sql.Result, error) {
 	return c.writePool.Exec(query, args...)
 }
 
-// Close gracefully closes all db pools
-func (c *DbClient) Close() error {
-	c.readPool.Close()
-	c.writePool.Close()
-	return nil
-}
-
 // MARK: - Private Func
 
-// newReadPool creates a read-only database handle.
-func newReadPool() (*sql.DB, error) {
-	query := url.Values{
-		"_pragma": commonPragma,
-		// read-only mode to prevent accidental writes for db reader.
-		"mode": []string{"ro"},
-	}
-	url := url.URL{
-		Scheme:   scheme,
-		Path:     dbPath,
-		RawQuery: query.Encode(),
-	}
-	db, err := sql.Open(driver, url.String())
-	if err != nil {
-		return nil, err
-	}
-	db.SetMaxOpenConns(50)
+// MARK: - Public Func
 
-	return db, nil
-}
-
-// newWritePool creates a database handle for writing to the database.
-func newWritePool() (*sql.DB, error) {
-	query := url.Values{
-		// normal sync mode for db writer.
-		"_pragma": append(commonPragma, "synchronous(NORMAL)"),
-	}
-	url := url.URL{
-		Scheme:   scheme,
-		Path:     dbPath,
-		RawQuery: query.Encode(),
-	}
-	db, err := sql.Open(driver, url.String())
-	if err != nil {
-		return nil, err
-	}
-	// Limits to 1 connection pool to prevent "database is locked" errors.
-	db.SetMaxOpenConns(1)
-
-	return db, nil
-}
-
+// NewDbClient creates a new database client.
 func NewDbClient() (*DbClient, error) {
-	//! NOTE: sqlite WAL mode requires -shm and -wal files.
-	//! Initialize the writer connection first
-	//! this creates -shm and -wal files because the reader(ro) cannot create them.
-
-	w, wErr := newWritePool()
-	if wErr != nil {
-		return nil, wErr
+	var (
+		dbPath = "app.db"
+		driver = "sqlite"
+		pragma = []string{
+			"journal_mode(WAL)",
+			"busy_timeout(5000)",
+			"foreign_keys(ON)",
+		}
+	)
+	if dbPathEnv, ok := os.LookupEnv("DB_PATH"); ok {
+		dbPath = dbPathEnv
 	}
-	r, rErr := newReadPool()
-	if rErr != nil {
-		return nil, rErr
+	readConfig := &sqliteConfig{
+		dbPath: dbPath,
+		driver: driver,
+		mode:   "ro",
+		pragma: pragma,
+	}
+	writeConfig := &sqliteConfig{
+		dbPath: dbPath,
+		driver: driver,
+		mode:   "rwc",
+		pragma: append(pragma, "synchronous(NORMAL)"),
+	}
+
+	//! NOTE: sqlite WAL mode requires -shm and -wal files.
+	//! Initialize the writer connection first (1 connection).
+	//! This is because WAL mode requires the "writer" connection (rwc) to create the -shm and -wal files,
+	//! and the "reader" connection (ro) cannot create them.
+
+	w, err := writeConfig.newPool(1)
+	if err != nil {
+		return nil, err
+	}
+	r, err := readConfig.newPool(10)
+	if err != nil {
+		return nil, err
 	}
 
 	client := &DbClient{
@@ -117,4 +153,3 @@ func NewDbClient() (*DbClient, error) {
 
 	return client, nil
 }
-
