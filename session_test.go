@@ -1,25 +1,31 @@
 package main
 
 import (
-	"database/sql"
 	"testing"
 	"time"
 
+	"github.com/irabeny89/gosqlitex"
 	_ "modernc.org/sqlite"
 )
 
-func setupTestDB(t *testing.T) *sql.DB {
-	db, err := sql.Open("sqlite", ":memory:")
+func setupSessionTestDB(t *testing.T) *gosqlitex.DbClient {
+	dbPath := t.TempDir() + "/test.db"
+	db, err := gosqlitex.Open(&gosqlitex.Config{
+		DbPath: dbPath,
+		Driver: "sqlite",
+	})
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
 
-	// Create dummy users table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY)`)
+	// Create users table first because of foreign key
+	err = CreateUserTable(db)
 	if err != nil {
 		t.Fatalf("Failed to create users table: %v", err)
 	}
-	_, err = db.Exec(`INSERT INTO users (id) VALUES (1)`)
+
+	// Insert dummy user
+	_, err = SaveUser(db, "Test User", "testuser", "password")
 	if err != nil {
 		t.Fatalf("Failed to insert dummy user: %v", err)
 	}
@@ -28,30 +34,18 @@ func setupTestDB(t *testing.T) *sql.DB {
 }
 
 func TestSessionLifecycle(t *testing.T) {
-	db := setupTestDB(t)
-	defer db.Close()
+	db := setupSessionTestDB(t)
 
-	err := CreateSessionTable(DbClient{readPool: db, writePool: db})
+	err := CreateSessionTable(db)
 	if err != nil {
 		t.Fatalf("CreateSessionTable failed: %v", err)
 	}
 
 	userId := 1
 
-	err = SaveSession(DbClient{readPool: db, writePool: db}, userId)
+	session, err := SaveSession(db, userId)
 	if err != nil {
 		t.Fatalf("SaveSession failed: %v", err)
-	}
-
-	var sessionId []byte
-	err = db.QueryRow("SELECT id FROM sessions WHERE user_id = ?", userId).Scan(&sessionId)
-	if err != nil {
-		t.Fatalf("Failed to query created session: %v", err)
-	}
-
-	session, err := GetSession(DbClient{readPool: db, writePool: db}, sessionId)
-	if err != nil {
-		t.Fatalf("GetSession failed: %v", err)
 	}
 
 	if session.UserId != int64(userId) {
@@ -62,22 +56,30 @@ func TestSessionLifecycle(t *testing.T) {
 		t.Error("Expected ExpiresAt to be set")
 	}
 
-	err = DeleteSession(DbClient{readPool: db, writePool: db}, sessionId)
+	retrievedSession, err := GetSession(db, session.Id)
+	if err != nil {
+		t.Fatalf("GetSession failed: %v", err)
+	}
+
+	if retrievedSession.UserId != int64(userId) {
+		t.Errorf("Expected retrieved UserId %d, got %d", userId, retrievedSession.UserId)
+	}
+
+	err = DeleteSession(db, session.Id)
 	if err != nil {
 		t.Fatalf("DeleteSession failed: %v", err)
 	}
 
-	_, err = GetSession(DbClient{readPool: db, writePool: db}, sessionId)
+	_, err = GetSession(db, session.Id)
 	if err == nil {
 		t.Error("Expected error when getting deleted session, but got nil")
 	}
 }
 
 func TestDeleteExpiredSessions(t *testing.T) {
-	db := setupTestDB(t)
-	defer db.Close()
+	db := setupSessionTestDB(t)
 
-	err := CreateSessionTable(DbClient{readPool: db, writePool: db})
+	err := CreateSessionTable(db)
 	if err != nil {
 		t.Fatalf("CreateSessionTable failed: %v", err)
 	}
@@ -90,33 +92,45 @@ func TestDeleteExpiredSessions(t *testing.T) {
 	expiredId := []byte("expired-id")
 	validId := []byte("valid-id")
 
+	// We use the underlying db to insert sessions with specific times for testing
+	// Note: In a real scenario, we might want a way to mock time or use a helper
 	_, err = db.Exec(
 		`INSERT INTO sessions (id, user_id, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
 		expiredId, userId, pastTime, pastTime, pastTime,
 	)
 	if err != nil {
+		// If it fails because of unique constraint on user_id (setupSessionTestDB inserts one), 
+		// we should probably handle it. But setupSessionTestDB only inserts a user, not a session.
+		// Wait, the sessions table has UNIQUE on user_id.
 		t.Fatalf("Failed to insert expired session: %v", err)
 	}
 
+	// Insert another user for the second session to avoid unique constraint
+	_, err = SaveUser(db, "Test User 2", "testuser2", "password")
+	if err != nil {
+		t.Fatalf("Failed to insert dummy user 2: %v", err)
+	}
+	userId2 := 2
+
 	_, err = db.Exec(
 		`INSERT INTO sessions (id, user_id, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		validId, userId, futureTime, futureTime, futureTime,
+		validId, userId2, futureTime, futureTime, futureTime,
 	)
 	if err != nil {
 		t.Fatalf("Failed to insert valid session: %v", err)
 	}
 
-	err = DeleteExpiredSessions(DbClient{readPool: db, writePool: db})
+	err = DeleteExpiredSessions(db)
 	if err != nil {
 		t.Fatalf("DeleteExpiredSessions failed: %v", err)
 	}
 
-	_, err = GetSession(DbClient{readPool: db, writePool: db}, expiredId)
+	_, err = GetSession(db, expiredId)
 	if err == nil {
 		t.Error("Expected expired session to be deleted, but it was found")
 	}
 
-	_, err = GetSession(DbClient{readPool: db, writePool: db}, validId)
+	_, err = GetSession(db, validId)
 	if err != nil {
 		t.Errorf("Expected valid session to exist, but got error: %v", err)
 	}

@@ -1,7 +1,11 @@
-.PHONY: all test coverage changelog setup-hooks
+# Variables
+BINARY_NAME=gbege
 
-# Default target
-all: test
+# Declare targets that aren't files
+.PHONY: all test coverage changelog setup-hooks env run build run-build clean
+
+# Default target runs when you type just `make`
+all: test-race build
 
 # Run all tests
 test:
@@ -25,3 +29,19 @@ setup-hooks:
 changelog:
 	chmod +x scripts/generate-changelog.sh
 	./scripts/generate-changelog.sh
+
+env:
+	export $(grep -v '^#' .env | xargs)
+	@echo ".env loaded successfully"
+
+run: env
+	go run main.go
+
+build: env
+	go build -o $(BINARY_NAME) main.go
+
+run-build:
+	./$(BINARY_NAME)
+
+clean:
+	rm -f $(BINARY_NAME)

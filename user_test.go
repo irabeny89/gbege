@@ -1,14 +1,18 @@
 package main
 
 import (
-	"database/sql"
 	"testing"
 
+	"github.com/irabeny89/gosqlitex"
 	_ "modernc.org/sqlite"
 )
 
-func setupUserTestDB(t *testing.T) *sql.DB {
-	db, err := sql.Open("sqlite", ":memory:")
+func setupUserTestDB(t *testing.T) *gosqlitex.DbClient {
+	dbPath := t.TempDir() + "/test.db"
+	db, err := gosqlitex.Open(&gosqlitex.Config{
+		DbPath: dbPath,
+		Driver: "sqlite",
+	})
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
@@ -18,11 +22,8 @@ func setupUserTestDB(t *testing.T) *sql.DB {
 
 func TestUserLifecycle(t *testing.T) {
 	db := setupUserTestDB(t)
-	defer db.Close()
 
-	client := DbClient{readPool: db, writePool: db}
-
-	err := CreateUserTable(client)
+	err := CreateUserTable(db)
 	if err != nil {
 		t.Fatalf("CreateUserTable failed: %v", err)
 	}
@@ -31,12 +32,16 @@ func TestUserLifecycle(t *testing.T) {
 	alias := "johndoe"
 	plainPassword := "secretpassword"
 
-	err = SaveUser(client, fullName, alias, plainPassword)
+	user, err := SaveUser(db, fullName, alias, plainPassword)
 	if err != nil {
 		t.Fatalf("SaveUser failed: %v", err)
 	}
 
-	userByAlias, err := GetUserByAlias(client, alias)
+	if user.Name != fullName {
+		t.Errorf("Expected name %s, got %s", fullName, user.Name)
+	}
+
+	userByAlias, err := GetUserByAlias(db, alias)
 	if err != nil {
 		t.Fatalf("GetUserByAlias failed: %v", err)
 	}
@@ -45,7 +50,7 @@ func TestUserLifecycle(t *testing.T) {
 		t.Errorf("Expected name %s, got %s", fullName, userByAlias.Name)
 	}
 
-	userById, err := GetUser(client, int(userByAlias.Id))
+	userById, err := GetUser(db, int(userByAlias.Id))
 	if err != nil {
 		t.Fatalf("GetUser failed: %v", err)
 	}
@@ -56,34 +61,34 @@ func TestUserLifecycle(t *testing.T) {
 
 	// Test UpdateUserPhoto
 	newPhoto := "https://example.com/photo.jpg"
-	err = UpdateUserPhoto(client, int(userById.Id), newPhoto)
+	err = UpdateUserPhoto(db, int(userById.Id), newPhoto)
 	if err != nil {
 		t.Fatalf("UpdateUserPhoto failed: %v", err)
 	}
 
-	updatedUser, _ := GetUser(client, int(userById.Id))
+	updatedUser, _ := GetUser(db, int(userById.Id))
 	if updatedUser.Photo != newPhoto {
 		t.Errorf("Expected photo %s, got %s", newPhoto, updatedUser.Photo)
 	}
 
 	// Test SoftDeleteUser
-	err = SoftDeleteUser(client, int(userById.Id))
+	err = SoftDeleteUser(db, int(userById.Id))
 	if err != nil {
 		t.Fatalf("SoftDeleteUser failed: %v", err)
 	}
 
-	deletedUser, _ := GetUser(client, int(userById.Id))
+	deletedUser, _ := GetUser(db, int(userById.Id))
 	if deletedUser.DeletedAt.IsZero() {
 		t.Error("Expected DeletedAt to be set")
 	}
 
 	// Test RemoveUser
-	err = RemoveUser(client, int(userById.Id))
+	err = RemoveUser(db, int(userById.Id))
 	if err != nil {
 		t.Fatalf("RemoveUser failed: %v", err)
 	}
 
-	_, err = GetUser(client, int(userById.Id))
+	_, err = GetUser(db, int(userById.Id))
 	if err == nil {
 		t.Error("Expected error when getting removed user, but got nil")
 	}

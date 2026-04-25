@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/irabeny89/gosqlitex"
 	_ "modernc.org/sqlite"
 )
 
@@ -20,7 +21,7 @@ const ttl = 30 * 24 * time.Hour
 // MARK: - Storage
 
 // CreateSessionTable creates the sessions table in the database.
-func CreateSessionTable(db DbClient) error {
+func CreateSessionTable(db *gosqlitex.DbClient) error {
 	_, err := db.Exec(
 		`
 		CREATE TABLE IF NOT EXISTS sessions (
@@ -32,9 +33,9 @@ func CreateSessionTable(db DbClient) error {
 			FOREIGN KEY (user_id) REFERENCES users(id)
 			ON DELETE CASCADE
 			ON UPDATE CASCADE
-		)
+		);
 
-		CREATE TRIGGER update_session_updated_at 
+		CREATE TRIGGER IF NOT EXISTS update_session_updated_at 
 		AFTER UPDATE ON sessions
 		BEGIN
 			UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
@@ -49,25 +50,27 @@ func CreateSessionTable(db DbClient) error {
 }
 
 // SaveSession creates a new session for a user in the database.
-func SaveSession(db DbClient, userId int) error {
+func SaveSession(db *gosqlitex.DbClient, userId int) (*Session, error) {
 	t := time.Now()
+	id := NewToken()
 	_, err := db.Exec(
 		`
 		INSERT INTO sessions (id, user_id, expires_at) 
 		VALUES (?, ?, ?)
 		`,
-		NewToken(), userId, t.Add(ttl),
+		id, userId, t.Add(ttl),
 	)
+
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return GetSession(db, id)
 }
 
 // GetSession retrieves a session from the database by its ID.
-func GetSession(db DbClient, id []byte) (Session, error) {
-	var session Session
+func GetSession(db *gosqlitex.DbClient, id []byte) (*Session, error) {
+	s := new(Session)
 	err := db.QueryRow(
 		`
 		SELECT id, user_id, expires_at, created_at, updated_at 
@@ -75,17 +78,16 @@ func GetSession(db DbClient, id []byte) (Session, error) {
 		WHERE id = ?
 		`,
 		id,
-	).Scan(&session.Id, &session.UserId, &session.ExpiresAt, &session.CreatedAt, &session.UpdatedAt)
+	).Scan(&s.Id, &s.UserId, &s.ExpiresAt, &s.CreatedAt, &s.UpdatedAt)
 	if err != nil {
-		return session, err
+		return s, err
 	}
 
-	return session, nil
+	return s, nil
 }
 
-// TODO: create a job to run this everyday
 // DeleteSession deletes a session from the database.
-func DeleteSession(db DbClient, id []byte) error {
+func DeleteSession(db *gosqlitex.DbClient, id []byte) error {
 	_, err := db.Exec(
 		`
 		DELETE FROM sessions
@@ -101,7 +103,7 @@ func DeleteSession(db DbClient, id []byte) error {
 }
 
 // DeleteExpiredSessions deletes all expired sessions from the database.
-func DeleteExpiredSessions(db DbClient) error {
+func DeleteExpiredSessions(db *gosqlitex.DbClient) error {
 	_, err := db.Exec(
 		`
 		DELETE FROM sessions

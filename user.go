@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"time"
+
+	"github.com/irabeny89/gosqlitex"
 )
 
 // MARK: - Type, Const & Var
@@ -20,7 +22,7 @@ type User struct {
 
 // MARK: - Storage
 
-func CreateUserTable(db DbClient) error {
+func CreateUserTable(db *gosqlitex.DbClient) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS users (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,7 +35,7 @@ func CreateUserTable(db DbClient) error {
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 
-		CREATE TRIGGER update_user_updated_at 
+		CREATE TRIGGER IF NOT EXISTS update_user_updated_at 
 		AFTER UPDATE ON users
 		BEGIN
 			UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
@@ -46,52 +48,62 @@ func CreateUserTable(db DbClient) error {
 }
 
 // SaveUser creates a new user in the database.
-func SaveUser(db DbClient, fullName, alias, plainPassword string) error {
-	_, err := db.Exec(`
-		INSERT INTO users (name, alias, password) VALUES (?, ?, ?)
+func SaveUser(db *gosqlitex.DbClient, fullName, alias, plainPassword string) (*User, error) {
+	res, err := db.Exec(`
+		INSERT INTO users (name, alias, password)
+		VALUES (?, ?, ?)
 	`, fullName, alias, HashPassword(plainPassword))
+
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	return GetUser(db, int(id))
 }
 
-func GetUser(db DbClient, id int) (User, error) {
-	var user User
+// GetUser retrieves a user from the database by their ID.
+func GetUser(db *gosqlitex.DbClient, id int) (*User, error) {
+	u := new(User)
 	var deletedAt sql.NullTime
 	err := db.QueryRow(`
-		SELECT id, COALESCE(photo, ''), name, alias, password, deleted_at, created_at, updated_at 
+		SELECT id, COALESCE(photo, ''), name, alias, password, deleted_at, created_at, updated_at
 		FROM users
 		WHERE id = ?
-	`, id).Scan(&user.Id, &user.Photo, &user.Name, &user.Alias, &user.Password, &deletedAt, &user.CreatedAt, &user.UpdatedAt)
+	`, id).Scan(&u.Id, &u.Photo, &u.Name, &u.Alias, &u.Password, &deletedAt, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
-		return user, err
+		return nil, err
 	}
 	if deletedAt.Valid {
-		user.DeletedAt = deletedAt.Time
+		u.DeletedAt = deletedAt.Time
 	}
-	return user, nil
+	return u, nil
 }
 
-func GetUserByAlias(db DbClient, alias string) (User, error) {
-	var user User
+// GetUserByAlias retrieves a user from the database by their alias.
+func GetUserByAlias(db *gosqlitex.DbClient, alias string) (*User, error) {
+	u := new(User)
 	var deletedAt sql.NullTime
 	err := db.QueryRow(`
-		SELECT id, COALESCE(photo, ''), name, alias, password, deleted_at, created_at, updated_at 
+		SELECT id, COALESCE(photo, ''), name, alias, password, deleted_at, created_at, updated_at
 		FROM users
 		WHERE alias = ?
-	`, alias).Scan(&user.Id, &user.Photo, &user.Name, &user.Alias, &user.Password, &deletedAt, &user.CreatedAt, &user.UpdatedAt)
+	`, alias).Scan(&u.Id, &u.Photo, &u.Name, &u.Alias, &u.Password, &deletedAt, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
-		return user, err
+		return nil, err
 	}
 	if deletedAt.Valid {
-		user.DeletedAt = deletedAt.Time
+		u.DeletedAt = deletedAt.Time
 	}
-	return user, nil
+	return u, nil
 }
 
 // SoftDeleteUser marks a user as deleted.
-func SoftDeleteUser(db DbClient, id int) error {
+func SoftDeleteUser(db *gosqlitex.DbClient, id int) error {
 	_, err := db.Exec(`
 		UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?
 	`, id)
@@ -101,9 +113,9 @@ func SoftDeleteUser(db DbClient, id int) error {
 	return nil
 }
 
-// RemoveUser deletes a user from the database permanently. 
+// RemoveUser deletes a user from the database permanently.
 // This should be used with caution as it will delete all associated data.
-func RemoveUser(db DbClient, id int) error {
+func RemoveUser(db *gosqlitex.DbClient, id int) error {
 	_, err := db.Exec(`
 		DELETE FROM users WHERE id = ?
 	`, id)
@@ -113,7 +125,8 @@ func RemoveUser(db DbClient, id int) error {
 	return nil
 }
 
-func UpdateUserPhoto(db DbClient, id int, photo string) error {
+// UpdateUserPhoto updates the photo of a user.
+func UpdateUserPhoto(db *gosqlitex.DbClient, id int, photo string) error {
 	_, err := db.Exec(`
 		UPDATE users SET photo = ? WHERE id = ?
 	`, photo, id)
@@ -124,15 +137,12 @@ func UpdateUserPhoto(db DbClient, id int, photo string) error {
 }
 
 // CleanupDeletedUsers removes users that have been soft deleted for more than 6 months.
-func CleanupDeletedUsers(db *DbClient) {
-	ticker := time.NewTicker(time.Hour)
-	for range ticker.C {
-		Log.Info("Cleaning up deleted users")
-		_, err := db.Exec(`
+func CleanupDeletedUsers(db *gosqlitex.DbClient) error {
+	_, err := db.Exec(`
 			DELETE FROM users where deleted_at < DATE('now', '-6 months');
 		`)
-		if err != nil {
-			Log.Error("Error cleaning up deleted users", "err", err)
-		}
+	if err != nil {
+		return err
 	}
+	return nil
 }

@@ -1,19 +1,51 @@
 package main
 
 import (
-	// "net"
-	// "net/http"
 	"os"
-	// "os/signal"
-	"sync"
-	// "syscall"
+	"time"
 
-	_ "github.com/irabeny89/go-envy" // Load env vars
+	"github.com/irabeny89/gosqlitex"
 )
 
+// MARK: - Workers
+
+func handleExpiredSessions(db *gosqlitex.DbClient) {
+	// run in the midnight
+	t := time.Now()
+	n := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	if n.Before(t) {
+		n = n.Add(24 * time.Hour)
+	}
+	diff := n.Sub(t)
+	ticker := time.NewTicker(diff)
+	for range ticker.C {
+		Log.Info("Cleaning up expired sessions")
+		err := DeleteExpiredSessions(db)
+		if err != nil {
+			Log.Error("Error cleaning up expired sessions", "err", err)
+		}
+	}
+}
+
+func handleDeletedUsers(db *gosqlitex.DbClient) {
+	// run at 1am
+	t := time.Now()
+	n := time.Date(t.Year(), t.Month(), t.Day(), 1, 0, 0, 0, t.Location())
+	if n.Before(t) {
+		n = n.Add(24 * time.Hour)
+	}
+	diff := n.Sub(t)
+	ticker := time.NewTicker(diff)
+	for range ticker.C {
+		Log.Info("Cleaning up deleted users")
+		CleanupDeletedUsers(db)
+	}
+}
+
+// MARK: - Main
 
 func main() {
-	db, err := sync.OnceValues(NewDbClient)()
+	db, err := gosqlitex.Open(&gosqlitex.Config{})
 	if err != nil {
 		Log.Error("Failed to initialize database", "err", err)
 		os.Exit(1)
@@ -23,48 +55,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var (
-		// default host address. `:0` means random port
-		// addr      = ":0"
-		// // Create a channel to listen for OS signals
-		// // We use a buffer of 1 so we don't miss the signal
-		// sigChan   = make(chan os.Signal, 1)
-	)
-
-	Log.Info("App environment", "env", os.Getenv("APP_ENV"))
-	// set address port if PORT env var exist
-	// p, pExist := os.LookupEnv("PORT")
-	// if pExist {
-	// 	addr = ":" + p
-	// }
-	// if !pExist {
-	// 	Log.Warn("PORT env var not found, using random port")
-	// }
-
-	// Register the signals we want to capture
-	// SIGINT = Ctrl+C, SIGTERM = Standard termination (Docker/Linux)
-	// signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	// // Run your app logic in a separate goroutine if needed,
-	// // or just wait for the signal here.
-	// go func() {
-	// 	ln, err := net.Listen("tcp", addr)
-	// 	if err != nil {
-	// 		Log.Error("Failed to start server", "err", err)
-	// 		os.Exit(1)
-	// 	}
-	// 	Log.Info("Server is running", "addr", addr)
-	// 	// Your web server or app logic goes here
-	// 	if err := http.Serve(ln, nil); err != nil {
-	// 		Log.Error("Server closed", "err", err)
-	// 	}
-	// }()
-
-	// go CleanupDeletedUsers(db)
-
-	// //! Block here until a signal is received
-	// sig := <-sigChan
-	// Log.Info("Shutting down...", "signal", sig)
-
-	// Log.Info("Goodbye!")
+	go handleExpiredSessions(db)
+	go handleDeletedUsers(db)
 }
