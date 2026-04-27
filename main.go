@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -22,11 +24,12 @@ func handleExpiredSessions(ctx context.Context, db *gosqlitex.DbClient) {
 	}
 	diff := n.Sub(t)
 	ticker := time.NewTicker(diff)
-	for range ticker.C {
+	defer ticker.Stop()
+	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-ticker.C:
 			Log.Info("Cleaning up expired sessions")
 			err := DeleteExpiredSessions(db)
 			if err != nil {
@@ -45,16 +48,49 @@ func handleDeletedUsers(ctx context.Context, db *gosqlitex.DbClient) {
 	}
 	diff := n.Sub(t)
 	ticker := time.NewTicker(diff)
-	for range ticker.C {
+	defer ticker.Stop()
+	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-ticker.C:
 			Log.Info("Cleaning up deleted users")
 			CleanupDeletedUsers(db)
 		}
 	}
 }
+
+func runServer(ctx context.Context, mux *http.ServeMux) {
+		p, ok := os.LookupEnv("PORT")
+		if !ok {
+			p = "8080"
+		}
+		addr := fmt.Sprintf(":%s", p)
+		s := &http.Server{
+			Addr:         addr,
+			Handler:      mux,
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  10 * time.Second,
+		}
+		Log.Info("Server starting", "addr", addr)
+		go func() {
+			<-ctx.Done()
+			Log.Info("Server shutting down")
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := s.Shutdown(shutdownCtx); err != nil {
+				Log.Error("Server forced to shutdown", "err", err)
+			}
+		}()
+
+		if err := s.ListenAndServe(); err != nil {
+			if err != http.ErrServerClosed {
+				Log.Error("Failed to start server", "err", err)
+				os.Exit(1)
+			}
+		}
+	}
 
 // MARK: - Main
 
@@ -73,7 +109,16 @@ func main() {
 		Log.Error("Failed to ping database", "err", err)
 		os.Exit(1)
 	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello, World!"))
+	})
+	
 	wg := new(sync.WaitGroup)
+	wg.Go(func() {
+		runServer(sigCtx, mux)
+	})
 	wg.Go(func() {
 		handleExpiredSessions(sigCtx, db)
 	})

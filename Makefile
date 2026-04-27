@@ -35,10 +35,10 @@ env:
 	@echo ".env loaded successfully"
 
 run: env
-	go run main.go
+	go run .
 
 build: env
-	go build -o $(BINARY_NAME) main.go
+	go build -o $(BINARY_NAME) .
 
 run-build:
 	./$(BINARY_NAME)
