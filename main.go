@@ -95,12 +95,10 @@ func runServer(ctx context.Context, mux *http.ServeMux) {
 // MARK: - Main
 
 func main() {
-	// this context will be used to listen for interrupt and termination signals
 	sigCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	// cancel the context when the application is shutting down
 	defer stop()
 
-	db, err := gosqlitex.Open(&gosqlitex.Config{})
+	db, err := gosqlitex.Open(new(gosqlitex.Config))
 	if err != nil {
 		Log.Error("Failed to initialize database", "err", err)
 		os.Exit(1)
