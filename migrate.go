@@ -82,13 +82,13 @@ func RunMigrations(dir string, sep string, db *gosqlitex.DbClient) error {
 		if err = validateFile(f, sep); err != nil {
 			return err
 		}
-		var id int64
-		err = db.QueryRow(`SELECT id FROM migrations WHERE name = ?`, f.Name()).Scan(&id)
+		var count int
+		err = db.QueryRow(`SELECT count(id) FROM migrations WHERE name = ?`, f.Name()).Scan(&count)
 		if err != nil {
 			return err
 		}
 		// ignore if migration has been run
-		if id > 0 {
+		if count > 0 {
 			continue
 		}
 		if err = updateDb(db, dir, f); err != nil {
