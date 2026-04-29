@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/irabeny89/gbege/internal/auth"
+	"github.com/irabeny89/gbege/internal/security"
 	"github.com/irabeny89/gosqlitex"
 )
 
@@ -26,7 +26,7 @@ func SaveUser(db *gosqlitex.DbClient, fullName, alias, plainPassword string) (*U
 	res, err := db.Exec(`
 		INSERT INTO users (name, alias, password)
 		VALUES (?, ?, ?)
-	`, fullName, alias, auth.HashPassword(plainPassword))
+	`, fullName, alias, security.HashPassword(plainPassword))
 
 	if err != nil {
 		return nil, err

@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/irabeny89/gbege/internal/api"
 	"github.com/irabeny89/gbege/internal/auth"
 	"github.com/irabeny89/gbege/internal/logger"
 
@@ -16,7 +17,7 @@ import (
 func setupHandlers(db *gosqlitex.DbClient) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, World!"))
+		api.Success(w, http.StatusOK, "Server running", nil)
 	})
 	mux.HandleFunc("/auth/login", func(w http.ResponseWriter, r *http.Request) {
 		auth.HandleLogin(db, w, r)
