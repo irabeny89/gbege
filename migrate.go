@@ -105,11 +105,14 @@ func RunMigrations(dir string, sep string, db *gosqlitex.DbClient) error {
 		}
 		// ignore if migration has been run
 		if count > 0 {
+			Log.Info("Migration already applied", "name", f.Name())
 			continue
 		}
+		// apply migration
 		if err = updateDb(db, dir, f); err != nil {
 			return err
 		}
+		Log.Info("Applied migration", "name", f.Name())
 	}
 	return nil
 }

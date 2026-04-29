@@ -107,6 +107,23 @@ func main() {
 		Log.Error("Failed to ping database", "err", err)
 		os.Exit(1)
 	}
+	Log.Info("Database connected")
+
+	migDir, ok := os.LookupEnv("MIG_DIR")
+	if !ok {
+		migDir = "./migrations"
+	}
+	sep, ok := os.LookupEnv("MIG_SEP")
+	if !ok {
+		sep = "_"
+	}
+	Log.Info("Running migrations", "dir", migDir, "sep", sep)
+	err = RunMigrations(migDir, sep, db)
+	if err != nil {
+		Log.Error("Failed to run migrations", "err", err)
+		os.Exit(1)
+	}
+	Log.Info("Migrations applied")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
