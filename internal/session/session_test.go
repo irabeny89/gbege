@@ -1,10 +1,12 @@
 package session
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/irabeny89/gbege/internal/user"
+	"github.com/irabeny89/gbege/migrate"
 	"github.com/irabeny89/gosqlitex"
 	_ "modernc.org/sqlite"
 )
@@ -19,10 +21,10 @@ func setupSessionTestDB(t *testing.T) *gosqlitex.DbClient {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
 
-	// Create users table first because of foreign key
-	err = user.CreateUserTable(db)
+	// Create sessions and users tables via migrations
+	err = migrate.RunMigrations(context.Background(), "../../migrations", "_", db)
 	if err != nil {
-		t.Fatalf("Failed to create users table: %v", err)
+		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	// Insert dummy user
@@ -36,11 +38,6 @@ func setupSessionTestDB(t *testing.T) *gosqlitex.DbClient {
 
 func TestSessionLifecycle(t *testing.T) {
 	db := setupSessionTestDB(t)
-
-	err := CreateSessionTable(db)
-	if err != nil {
-		t.Fatalf("CreateSessionTable failed: %v", err)
-	}
 
 	userId := 1
 
@@ -80,11 +77,6 @@ func TestSessionLifecycle(t *testing.T) {
 func TestDeleteExpiredSessions(t *testing.T) {
 	db := setupSessionTestDB(t)
 
-	err := CreateSessionTable(db)
-	if err != nil {
-		t.Fatalf("CreateSessionTable failed: %v", err)
-	}
-
 	userId := 1
 
 	pastTime := time.Now().Add(-24 * time.Hour)
@@ -95,7 +87,7 @@ func TestDeleteExpiredSessions(t *testing.T) {
 
 	// We use the underlying db to insert sessions with specific times for testing
 	// Note: In a real scenario, we might want a way to mock time or use a helper
-	_, err = db.Exec(
+	_, err := db.Exec(
 		`INSERT INTO sessions (id, user_id, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
 		expiredId, userId, pastTime, pastTime, pastTime,
 	)

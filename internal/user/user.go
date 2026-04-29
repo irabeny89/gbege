@@ -21,33 +21,6 @@ type User struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-// MARK: - Storage
-
-func CreateUserTable(db *gosqlitex.DbClient) error {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS users (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			photo TEXT,
-			name TEXT NOT NULL,
-			alias TEXT NOT NULL UNIQUE,
-			password TEXT NOT NULL,
-			deleted_at DATETIME,
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-		);
-
-		CREATE TRIGGER IF NOT EXISTS update_user_updated_at 
-		AFTER UPDATE ON users
-		BEGIN
-			UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-		END;
-		`)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // SaveUser creates a new user in the database.
 func SaveUser(db *gosqlitex.DbClient, fullName, alias, plainPassword string) (*User, error) {
 	res, err := db.Exec(`

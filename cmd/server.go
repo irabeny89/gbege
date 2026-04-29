@@ -9,6 +9,7 @@ import (
 
 	"github.com/irabeny89/gbege/internal/auth"
 	"github.com/irabeny89/gbege/internal/logger"
+
 	"github.com/irabeny89/gosqlitex"
 )
 
@@ -38,18 +39,15 @@ func runServer(ctx context.Context, db *gosqlitex.DbClient) {
 	if !ok {
 		p = "8080"
 	}
-
-	mux := setupHandlers(db)
-
 	addr := fmt.Sprintf(":%s", p)
 	s := &http.Server{
 		Addr:         addr,
-		Handler:      mux,
+		Handler:      setupHandlers(db),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  10 * time.Second,
 	}
-	
+
 	go func() {
 		<-ctx.Done()
 		logger.Log.Info("Server shutting down")

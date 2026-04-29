@@ -1,8 +1,11 @@
 package user
 
 import (
+	"context"
 	"testing"
+	"time"
 
+	"github.com/irabeny89/gbege/migrate"
 	"github.com/irabeny89/gosqlitex"
 	_ "modernc.org/sqlite"
 )
@@ -17,16 +20,17 @@ func setupUserTestDB(t *testing.T) *gosqlitex.DbClient {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
 
+	// Run migrations to setup the schema
+	err = migrate.RunMigrations(context.Background(), "../../migrations", "_", db)
+	if err != nil {
+		t.Fatalf("Failed to run migrations: %v", err)
+	}
+
 	return db
 }
 
 func TestUserLifecycle(t *testing.T) {
 	db := setupUserTestDB(t)
-
-	err := CreateUserTable(db)
-	if err != nil {
-		t.Fatalf("CreateUserTable failed: %v", err)
-	}
 
 	fullName := "John Doe"
 	alias := "johndoe"
@@ -91,5 +95,46 @@ func TestUserLifecycle(t *testing.T) {
 	_, err = GetUser(db, int(userById.Id))
 	if err == nil {
 		t.Error("Expected error when getting removed user, but got nil")
+	}
+}
+
+func TestCleanupDeletedUsers(t *testing.T) {
+	db := setupUserTestDB(t)
+
+	// Insert a user deleted more than 6 months ago
+	oldDate := time.Now().AddDate(0, -7, 0).Format("2006-01-02 15:04:05")
+	_, err := db.Exec(`
+		INSERT INTO users (name, alias, password, deleted_at)
+		VALUES (?, ?, ?, ?)
+	`, "Old User", "olduser", "password", oldDate)
+	if err != nil {
+		t.Fatalf("Failed to insert old deleted user: %v", err)
+	}
+
+	// Insert a user deleted recently
+	recentDate := time.Now().AddDate(0, -1, 0).Format("2006-01-02 15:04:05")
+	_, err = db.Exec(`
+		INSERT INTO users (name, alias, password, deleted_at)
+		VALUES (?, ?, ?, ?)
+	`, "Recent User", "recentuser", "password", recentDate)
+	if err != nil {
+		t.Fatalf("Failed to insert recent deleted user: %v", err)
+	}
+
+	err = CleanupDeletedUsers(db)
+	if err != nil {
+		t.Fatalf("CleanupDeletedUsers failed: %v", err)
+	}
+
+	// Verify old user is gone
+	_, err = GetUserByAlias(db, "olduser")
+	if err == nil {
+		t.Error("Expected old user to be cleaned up, but it still exists")
+	}
+
+	// Verify recent user still exists
+	_, err = GetUserByAlias(db, "recentuser")
+	if err != nil {
+		t.Errorf("Expected recent user to still exist, but got error: %v", err)
 	}
 }

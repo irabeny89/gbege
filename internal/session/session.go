@@ -19,37 +19,6 @@ type Session struct {
 // time to live for a session is 30 days
 const ttl = 30 * 24 * time.Hour
 
-// MARK: - Storage
-
-// CreateSessionTable creates the sessions table in the database.
-func CreateSessionTable(db *gosqlitex.DbClient) error {
-	_, err := db.Exec(
-		`
-		CREATE TABLE IF NOT EXISTS sessions (
-			id BLOB PRIMARY KEY,
-			user_id INTEGER NOT NULL UNIQUE,
-			expires_at DATETIME NOT NULL,
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (user_id) REFERENCES users(id)
-			ON DELETE CASCADE
-			ON UPDATE CASCADE
-		);
-
-		CREATE TRIGGER IF NOT EXISTS update_session_updated_at 
-		AFTER UPDATE ON sessions
-		BEGIN
-			UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-		END;
-		`,
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // SaveSession creates a new session for a user in the database.
 func SaveSession(db *gosqlitex.DbClient, userId int) (*Session, error) {
 	t := time.Now()
