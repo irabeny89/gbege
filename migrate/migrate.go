@@ -1,12 +1,14 @@
-package main
+package migrate
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/irabeny89/gbege/internal/logger"
 	"github.com/irabeny89/gosqlitex"
 )
 
@@ -44,8 +46,8 @@ func validateFile(f os.DirEntry, sep string) error {
 	return nil
 }
 
-func updateDb(db *gosqlitex.DbClient, dir string, f os.DirEntry) error {
-	tx, err := db.Begin()
+func updateDb(ctx context.Context, db *gosqlitex.DbClient, dir string, f os.DirEntry) error {
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -54,11 +56,11 @@ func updateDb(db *gosqlitex.DbClient, dir string, f os.DirEntry) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(string(sqlBytes))
+	_, err = tx.ExecContext(ctx, string(sqlBytes))
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 			INSERT INTO migrations (name) VALUES (?)
 		`, f.Name())
 	if err != nil {
@@ -86,7 +88,7 @@ func updateDb(db *gosqlitex.DbClient, dir string, f os.DirEntry) error {
 // - Records the migration in the migrations table
 //
 // - Rolls back the transaction if any error occurs
-func RunMigrations(dir string, sep string, db *gosqlitex.DbClient) error {
+func RunMigrations(ctx context.Context, dir string, sep string, db *gosqlitex.DbClient) error {
 	if err := createMigTable(db); err != nil {
 		return err
 	}
@@ -99,20 +101,20 @@ func RunMigrations(dir string, sep string, db *gosqlitex.DbClient) error {
 			return err
 		}
 		var count int
-		err = db.QueryRow(`SELECT count(id) FROM migrations WHERE name = ?`, f.Name()).Scan(&count)
+		err = db.QueryRowContext(ctx, `SELECT count(id) FROM migrations WHERE name = ?`, f.Name()).Scan(&count)
 		if err != nil {
 			return err
 		}
 		// ignore if migration has been run
 		if count > 0 {
-			Log.Info("Migration already applied", "name", f.Name())
+			logger.Log.Info("Migration already applied", "name", f.Name())
 			continue
 		}
 		// apply migration
-		if err = updateDb(db, dir, f); err != nil {
+		if err = updateDb(ctx, db, dir, f); err != nil {
 			return err
 		}
-		Log.Info("Applied migration", "name", f.Name())
+		logger.Log.Info("Applied migration", "name", f.Name())
 	}
 	return nil
 }

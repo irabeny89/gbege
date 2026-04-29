@@ -1,9 +1,10 @@
-package main
+package session
 
 import (
 	"testing"
 	"time"
 
+	"github.com/irabeny89/gbege/internal/user"
 	"github.com/irabeny89/gosqlitex"
 	_ "modernc.org/sqlite"
 )
@@ -19,13 +20,13 @@ func setupSessionTestDB(t *testing.T) *gosqlitex.DbClient {
 	}
 
 	// Create users table first because of foreign key
-	err = CreateUserTable(db)
+	err = user.CreateUserTable(db)
 	if err != nil {
 		t.Fatalf("Failed to create users table: %v", err)
 	}
 
 	// Insert dummy user
-	_, err = SaveUser(db, "Test User", "testuser", "password")
+	_, err = user.SaveUser(db, "Test User", "testuser", "password")
 	if err != nil {
 		t.Fatalf("Failed to insert dummy user: %v", err)
 	}
@@ -106,7 +107,7 @@ func TestDeleteExpiredSessions(t *testing.T) {
 	}
 
 	// Insert another user for the second session to avoid unique constraint
-	_, err = SaveUser(db, "Test User 2", "testuser2", "password")
+	_, err = user.SaveUser(db, "Test User 2", "testuser2", "password")
 	if err != nil {
 		t.Fatalf("Failed to insert dummy user 2: %v", err)
 	}

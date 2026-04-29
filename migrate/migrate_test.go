@@ -1,6 +1,7 @@
-package main
+package migrate
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -77,7 +78,7 @@ func TestRunMigrations(t *testing.T) {
 	}
 
 	// Run migrations
-	err = RunMigrations(migDir, "_", db)
+	err = RunMigrations(context.Background(), migDir, "_", db)
 	if err != nil {
 		t.Fatalf("RunMigrations failed: %v", err)
 	}
@@ -99,7 +100,7 @@ func TestRunMigrations(t *testing.T) {
 	}
 
 	// Run migrations again, should skip
-	err = RunMigrations(migDir, "_", db)
+	err = RunMigrations(context.Background(), migDir, "_", db)
 	if err != nil {
 		t.Fatalf("RunMigrations failed on second run: %v", err)
 	}
@@ -119,7 +120,7 @@ func TestRunMigrations(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = RunMigrations(migDir, "_", db)
+	err = RunMigrations(context.Background(), migDir, "_", db)
 	if err != nil {
 		t.Fatalf("RunMigrations failed on third run: %v", err)
 	}
@@ -142,7 +143,7 @@ func TestRunMigrations_InvalidFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = RunMigrations(migDir, "_", db)
+	err = RunMigrations(context.Background(), migDir, "_", db)
 	if err == nil {
 		t.Error("Expected error for invalid migration filename, got nil")
 	}
@@ -163,7 +164,7 @@ func TestRunMigrations_FailingMigration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = RunMigrations(migDir, "_", db)
+	err = RunMigrations(context.Background(), migDir, "_", db)
 	if err == nil {
 		t.Error("Expected error for failing migration, got nil")
 	}

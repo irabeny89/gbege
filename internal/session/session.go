@@ -1,8 +1,9 @@
-package main
+package session
 
 import (
 	"time"
 
+	"github.com/irabeny89/gbege/internal/auth"
 	"github.com/irabeny89/gosqlitex"
 	_ "modernc.org/sqlite"
 )
@@ -52,7 +53,7 @@ func CreateSessionTable(db *gosqlitex.DbClient) error {
 // SaveSession creates a new session for a user in the database.
 func SaveSession(db *gosqlitex.DbClient, userId int) (*Session, error) {
 	t := time.Now()
-	id := NewToken()
+	id := auth.NewToken()
 	_, err := db.Exec(
 		`
 		INSERT INTO sessions (id, user_id, expires_at) 
