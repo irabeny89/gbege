@@ -70,6 +70,22 @@ func updateDb(db *gosqlitex.DbClient, dir string, f os.DirEntry) error {
 	return nil
 }
 
+// RunMigrations applies all migrations in the given directory to the database.
+// 
+// This function:
+// - Creates the migrations table if it doesn't exist
+//
+// - Reads all files in the specified directory
+//
+// - Validates that each file is a valid migration file
+//
+// - Checks if the migration has already been applied
+//
+// - Applies the migration if it hasn't been applied
+//
+// - Records the migration in the migrations table
+//
+// - Rolls back the transaction if any error occurs
 func RunMigrations(dir string, sep string, db *gosqlitex.DbClient) error {
 	if err := createMigTable(db); err != nil {
 		return err
