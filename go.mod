@@ -3,14 +3,14 @@ module github.com/irabeny89/gbege
 go 1.26.2
 
 require (
-	github.com/irabeny89/gosqlitex v0.2.0
+	github.com/irabeny89/gosqlitex v0.3.0
 	golang.org/x/crypto v0.50.0
 )
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/mattn/go-isatty v0.0.21 // indirect
+	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	modernc.org/libc v1.72.1 // indirect
@@ -20,5 +20,5 @@ require (
 
 require (
 	golang.org/x/sys v0.43.0 // indirect
-	modernc.org/sqlite v1.49.1
+	modernc.org/sqlite v1.50.0
 )
