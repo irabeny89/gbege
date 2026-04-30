@@ -62,9 +62,9 @@ func GetUserByUsername(db *gosqlitex.DbClient, alias string) (*User, error) {
 	u := new(User)
 	var deletedAt sql.NullTime
 	err := db.QueryRow(`
-		SELECT id, COALESCE(photo, ''), name, alias, password, deleted_at, created_at, updated_at
+		SELECT id, COALESCE(photo, ''), username, password, deleted_at, created_at, updated_at
 		FROM users
-		WHERE alias = ?
+		WHERE username = ?
 	`, alias).Scan(&u.Id, &u.Photo, &u.Username, &u.Password, &deletedAt, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err

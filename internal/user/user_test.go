@@ -10,6 +10,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// MARK: - Test db
 func setupUserTestDB(t *testing.T) *gosqlitex.DbClient {
 	dbPath := t.TempDir() + "/test.db"
 	db, err := gosqlitex.Open(&gosqlitex.Config{
@@ -29,6 +30,7 @@ func setupUserTestDB(t *testing.T) *gosqlitex.DbClient {
 	return db
 }
 
+// MARK: - User lifecycle
 func TestUserLifecycle(t *testing.T) {
 	db := setupUserTestDB(t)
 
@@ -97,15 +99,21 @@ func TestUserLifecycle(t *testing.T) {
 	}
 }
 
+// MARK: - User cleanup
 func TestCleanupDeletedUsers(t *testing.T) {
-	db := setupUserTestDB(t)
+	var (
+		db = setupUserTestDB(t)
+		oldUser = "old_user"
+		recentUser = "recent_user"
+		password = "password"
+	)
 
 	// Insert a user deleted more than 6 months ago
 	oldDate := time.Now().AddDate(0, -7, 0).Format("2006-01-02 15:04:05")
 	_, err := db.Exec(`
-		INSERT INTO users (name, alias, password, deleted_at)
-		VALUES (?, ?, ?, ?)
-	`, "Old User", "olduser", "password", oldDate)
+		INSERT INTO users (username, password, deleted_at)
+		VALUES (?, ?, ?)
+	`, oldUser, password, oldDate)
 	if err != nil {
 		t.Fatalf("Failed to insert old deleted user: %v", err)
 	}
@@ -113,9 +121,9 @@ func TestCleanupDeletedUsers(t *testing.T) {
 	// Insert a user deleted recently
 	recentDate := time.Now().AddDate(0, -1, 0).Format("2006-01-02 15:04:05")
 	_, err = db.Exec(`
-		INSERT INTO users (name, alias, password, deleted_at)
-		VALUES (?, ?, ?, ?)
-	`, "Recent User", "recentuser", "password", recentDate)
+		INSERT INTO users (username, password, deleted_at)
+		VALUES (?, ?, ?)
+	`, recentUser, password, recentDate)
 	if err != nil {
 		t.Fatalf("Failed to insert recent deleted user: %v", err)
 	}
@@ -126,13 +134,13 @@ func TestCleanupDeletedUsers(t *testing.T) {
 	}
 
 	// Verify old user is gone
-	_, err = GetUserByUsername(db, "olduser")
+	_, err = GetUserByUsername(db, oldUser)
 	if err == nil {
 		t.Error("Expected old user to be cleaned up, but it still exists")
 	}
 
 	// Verify recent user still exists
-	_, err = GetUserByUsername(db, "recentuser")
+	_, err = GetUserByUsername(db, recentUser)
 	if err != nil {
 		t.Errorf("Expected recent user to still exist, but got error: %v", err)
 	}
