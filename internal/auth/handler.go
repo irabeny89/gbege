@@ -99,6 +99,7 @@ func HandleLogin(db *gosqlitex.DbClient, w http.ResponseWriter, r *http.Request)
 	})
 }
 
+// MARK: - Signup
 // HandleSignUp handles signup requests
 func HandleSignUp(db *gosqlitex.DbClient, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -143,6 +144,7 @@ func HandleSignUp(db *gosqlitex.DbClient, w http.ResponseWriter, r *http.Request
 	api.Success(w, http.StatusOK, "User created successfully", u)
 }
 
+// MARK: - Logout
 // HandleLogout handles logout requests
 func HandleLogout(db *gosqlitex.DbClient, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -163,6 +165,7 @@ func HandleLogout(db *gosqlitex.DbClient, w http.ResponseWriter, r *http.Request
 	api.Success(w, http.StatusOK, "Logout successful", nil)
 }
 
+// MARK: - Me
 // HandleMe handles requests for the current user
 func HandleMe(db *gosqlitex.DbClient, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
