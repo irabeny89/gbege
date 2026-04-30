@@ -13,8 +13,7 @@ import (
 type User struct {
 	Id        int64     `json:"id"`
 	Photo     string    `json:"photo"`
-	Name      string    `json:"name"`
-	Alias     string    `json:"alias"`
+	Username      string    `json:"name"`
 	Password  string    `json:"password"`
 	DeletedAt time.Time `json:"deletedAt"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -22,11 +21,11 @@ type User struct {
 }
 
 // SaveUser creates a new user in the database.
-func SaveUser(db *gosqlitex.DbClient, fullName, alias, plainPassword string) (*User, error) {
+func SaveUser(db *gosqlitex.DbClient, username, plainPassword string) (*User, error) {
 	res, err := db.Exec(`
-		INSERT INTO users (name, alias, password)
-		VALUES (?, ?, ?)
-	`, fullName, alias, security.HashPassword(plainPassword))
+		INSERT INTO users (username, password)
+		VALUES (?, ?)
+	`, username, security.HashPassword(plainPassword))
 
 	if err != nil {
 		return nil, err
@@ -45,10 +44,10 @@ func GetUser(db *gosqlitex.DbClient, id int) (*User, error) {
 	u := new(User)
 	var deletedAt sql.NullTime
 	err := db.QueryRow(`
-		SELECT id, COALESCE(photo, ''), name, alias, password, deleted_at, created_at, updated_at
+		SELECT id, COALESCE(photo, ''), username, password, deleted_at, created_at, updated_at
 		FROM users
 		WHERE id = ?
-	`, id).Scan(&u.Id, &u.Photo, &u.Name, &u.Alias, &u.Password, &deletedAt, &u.CreatedAt, &u.UpdatedAt)
+	`, id).Scan(&u.Id, &u.Photo, &u.Username, &u.Password, &deletedAt, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -58,15 +57,15 @@ func GetUser(db *gosqlitex.DbClient, id int) (*User, error) {
 	return u, nil
 }
 
-// GetUserByAlias retrieves a user from the database by their alias.
-func GetUserByAlias(db *gosqlitex.DbClient, alias string) (*User, error) {
+// GetUserByUsername retrieves a user from the database by their alias.
+func GetUserByUsername(db *gosqlitex.DbClient, alias string) (*User, error) {
 	u := new(User)
 	var deletedAt sql.NullTime
 	err := db.QueryRow(`
 		SELECT id, COALESCE(photo, ''), name, alias, password, deleted_at, created_at, updated_at
 		FROM users
 		WHERE alias = ?
-	`, alias).Scan(&u.Id, &u.Photo, &u.Name, &u.Alias, &u.Password, &deletedAt, &u.CreatedAt, &u.UpdatedAt)
+	`, alias).Scan(&u.Id, &u.Photo, &u.Username, &u.Password, &deletedAt, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

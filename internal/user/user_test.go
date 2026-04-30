@@ -32,35 +32,34 @@ func setupUserTestDB(t *testing.T) *gosqlitex.DbClient {
 func TestUserLifecycle(t *testing.T) {
 	db := setupUserTestDB(t)
 
-	fullName := "John Doe"
-	alias := "johndoe"
+	username := "johndoe"
 	plainPassword := "secretpassword"
 
-	user, err := SaveUser(db, fullName, alias, plainPassword)
+	user, err := SaveUser(db, username, plainPassword)
 	if err != nil {
 		t.Fatalf("SaveUser failed: %v", err)
 	}
 
-	if user.Name != fullName {
-		t.Errorf("Expected name %s, got %s", fullName, user.Name)
+	if user.Username != username {
+		t.Errorf("Expected username %s, got %s", username, user.Username)
 	}
 
-	userByAlias, err := GetUserByAlias(db, alias)
+	userByUsername, err := GetUserByUsername(db, username)
 	if err != nil {
-		t.Fatalf("GetUserByAlias failed: %v", err)
+		t.Fatalf("GetUserByUsername failed: %v", err)
 	}
 
-	if userByAlias.Name != fullName {
-		t.Errorf("Expected name %s, got %s", fullName, userByAlias.Name)
+	if userByUsername.Username != username {
+		t.Errorf("Expected username %s, got %s", username, userByUsername.Username)
 	}
 
-	userById, err := GetUser(db, int(userByAlias.Id))
+	userById, err := GetUser(db, int(userByUsername.Id))
 	if err != nil {
 		t.Fatalf("GetUser failed: %v", err)
 	}
 
-	if userById.Id != userByAlias.Id {
-		t.Errorf("Expected id %d, got %d", userByAlias.Id, userById.Id)
+	if userById.Id != userByUsername.Id {
+		t.Errorf("Expected id %d, got %d", userByUsername.Id, userById.Id)
 	}
 
 	// Test UpdateUserPhoto
@@ -127,13 +126,13 @@ func TestCleanupDeletedUsers(t *testing.T) {
 	}
 
 	// Verify old user is gone
-	_, err = GetUserByAlias(db, "olduser")
+	_, err = GetUserByUsername(db, "olduser")
 	if err == nil {
 		t.Error("Expected old user to be cleaned up, but it still exists")
 	}
 
 	// Verify recent user still exists
-	_, err = GetUserByAlias(db, "recentuser")
+	_, err = GetUserByUsername(db, "recentuser")
 	if err != nil {
 		t.Errorf("Expected recent user to still exist, but got error: %v", err)
 	}

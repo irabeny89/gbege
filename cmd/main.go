@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
@@ -13,6 +14,16 @@ import (
 )
 
 func main() {
+	env, ok := os.LookupEnv("APP_ENV")
+	if !ok {
+		env = "development"
+	}
+	if env == "development" {
+		logger.SetLevel(slog.LevelDebug)
+	} else {
+		logger.SetLevel(slog.LevelInfo)
+	}
+
 	sigCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

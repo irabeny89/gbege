@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -40,7 +39,7 @@ func runServer(ctx context.Context, db *gosqlitex.DbClient) {
 	if !ok {
 		p = "8080"
 	}
-	addr := fmt.Sprintf(":%s", p)
+	addr := ":" + p
 	s := &http.Server{
 		Addr:         addr,
 		Handler:      setupHandlers(db),

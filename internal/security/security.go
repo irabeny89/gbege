@@ -19,14 +19,6 @@ type Params struct {
 	Hash        []byte
 }
 
-const (
-	memory      = 64 * 1024 // 64MB
-	iterations  = 3
-	parallelism = 2
-	saltLength  = 16
-	keyLength   = 32
-)
-
 // NewToken generates a new random token.
 func NewToken() []byte {
 	b := make([]byte, 16)
@@ -70,6 +62,14 @@ func DecodeHash(encodedHash string) (*Params, error) {
 
 // HashPassword hashes a password.
 func HashPassword(password string) string {
+	const (
+		memory      = 64 * 1024 // 64MB
+		iterations  = 3
+		parallelism = 2
+		saltLength  = 16
+		keyLength   = 32
+	)
+
 	salt := make([]byte, saltLength)
 	rand.Read(salt)
 
