@@ -28,7 +28,7 @@ func setupSessionTestDB(t *testing.T) *gosqlitex.DbClient {
 	}
 
 	// Insert dummy user
-	_, err = user.SaveUser(db, "Test User", "testuser", "password")
+	_, err = user.SaveUser(db, "test_user", "password")
 	if err != nil {
 		t.Fatalf("Failed to insert dummy user: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestDeleteExpiredSessions(t *testing.T) {
 	}
 
 	// Insert another user for the second session to avoid unique constraint
-	_, err = user.SaveUser(db, "Test User 2", "testuser2", "password")
+	_, err = user.SaveUser(db, "test_user2", "password")
 	if err != nil {
 		t.Fatalf("Failed to insert dummy user 2: %v", err)
 	}
