@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/irabeny89/gbege/internal/logger"
-	"github.com/irabeny89/gbege/migrate"
+	"github.com/irabeny89/gbege/internal/migrate"
 	"github.com/irabeny89/gosqlitex"
 )
 

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/irabeny89/gbege/internal/migrate"
 	"github.com/irabeny89/gbege/internal/user"
-	"github.com/irabeny89/gbege/migrate"
 	"github.com/irabeny89/gosqlitex"
 	_ "modernc.org/sqlite"
 )
@@ -92,7 +92,7 @@ func TestDeleteExpiredSessions(t *testing.T) {
 		expiredId, userId, pastTime, pastTime, pastTime,
 	)
 	if err != nil {
-		// If it fails because of unique constraint on user_id (setupSessionTestDB inserts one), 
+		// If it fails because of unique constraint on user_id (setupSessionTestDB inserts one),
 		// we should probably handle it. But setupSessionTestDB only inserts a user, not a session.
 		// Wait, the sessions table has UNIQUE on user_id.
 		t.Fatalf("Failed to insert expired session: %v", err)

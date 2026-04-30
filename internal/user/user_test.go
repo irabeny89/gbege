@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/irabeny89/gbege/migrate"
+	"github.com/irabeny89/gbege/internal/migrate"
 	"github.com/irabeny89/gosqlitex"
 	_ "modernc.org/sqlite"
 )
@@ -102,10 +102,10 @@ func TestUserLifecycle(t *testing.T) {
 // MARK: - User cleanup
 func TestCleanupDeletedUsers(t *testing.T) {
 	var (
-		db = setupUserTestDB(t)
-		oldUser = "old_user"
+		db         = setupUserTestDB(t)
+		oldUser    = "old_user"
 		recentUser = "recent_user"
-		password = "password"
+		password   = "password"
 	)
 
 	// Insert a user deleted more than 6 months ago
