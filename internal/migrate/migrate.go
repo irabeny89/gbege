@@ -2,17 +2,19 @@
 package migrate
 
 import (
+	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/irabeny89/gbege/internal/logger"
 	"github.com/irabeny89/gosqlitex"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 func createMigTable(db *gosqlitex.DbClient) error {
@@ -102,32 +104,28 @@ func RunMigrations(ctx context.Context, dir string, sep string, db *gosqlitex.Db
 		}
 		var query []byte
 		err = db.QueryRowContext(ctx, `SELECT query FROM migrations WHERE name = ?`, f.Name()).Scan(&query)
-		if err != nil {
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
-		sqlBytes, err := os.ReadFile(filepath.Join(dir, f.Name()))
-		if err != nil {
-			return err
+
+		sqlBytes, errFile := os.ReadFile(filepath.Join(dir, f.Name()))
+		if errFile != nil {
+			return errFile
 		}
-		q := string(query)
-		// migration was applied if query has value
-		if q != "" {
+
+		if err == nil {
+			// Migration already applied
 			logger.Log.Info("Migration already applied", "name", f.Name())
-			cmd := exec.CommandContext(ctx, "diff", "-uwi", fmt.Sprintf("<echo %s)", q), fmt.Sprintf("<(echo %s)", string(sqlBytes)))
-			r, err := cmd.CombinedOutput()
-			if err != nil {
-				if exitErr, ok := err.(*exec.ExitError); ok {
-					if exitErr.ExitCode() == 1 {
-						// print the difference
-						fmt.Println(string(r))
-						return errors.New("create new migration file with the difference")
-					}
-				}
-				return err
+			dmp := diffmatchpatch.New()
+			if !bytes.Equal(query, sqlBytes) {
+				diff := dmp.DiffMain(string(query), string(sqlBytes), false)
+				fmt.Printf("Migration mismatch for %s\n", f.Name())
+				fmt.Println(dmp.DiffPrettyText(diff))
+				return fmt.Errorf("migration content changed for %s", f.Name())
 			}
-			logger.Log.Info("No difference")
 			continue
 		}
+
 		// apply migration
 		if err = updateDB(ctx, db, f.Name(), sqlBytes); err != nil {
 			return err

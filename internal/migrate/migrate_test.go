@@ -84,7 +84,7 @@ func TestRunMigrations(t *testing.T) {
 	}
 
 	// Verify table exists and has column
-	_, err = db.Exec("INSERT INTO users (usernname, email) VALUES (?, ?)", "test", "test@example.com")
+	_, err = db.Exec("INSERT INTO users (name, email) VALUES (?, ?)", "test", "test@example.com")
 	if err != nil {
 		t.Fatalf("Failed to insert into migrated table: %v", err)
 	}
@@ -167,6 +167,8 @@ func TestRunMigrations_FailingMigration(t *testing.T) {
 	err = RunMigrations(context.Background(), migDir, "_", db)
 	if err == nil {
 		t.Error("Expected error for failing migration, got nil")
+	} else {
+		t.Logf("Expected error received: %v", err)
 	}
 
 	// Verify that the first migration was applied (Wait, RunMigrations stops at the first failure)
@@ -178,6 +180,7 @@ func TestRunMigrations_FailingMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("Migrations count: %d", count)
 	// It should be 1 if it stopped at the second one
 	if count != 1 {
 		t.Errorf("Expected 1 migration to be recorded, got %d", count)
@@ -187,5 +190,7 @@ func TestRunMigrations_FailingMigration(t *testing.T) {
 	_, err = db.Exec("INSERT INTO invalid (id) VALUES (1)")
 	if err == nil {
 		t.Error("Expected error inserting into table from failed migration, but table seems to exist")
+	} else {
+		t.Logf("Expected error inserting into 'invalid' table: %v", err)
 	}
 }
