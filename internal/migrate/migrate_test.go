@@ -68,11 +68,11 @@ func TestRunMigrations(t *testing.T) {
 	mig1 := "1_create_users.sql"
 	mig2 := "2_add_email.sql"
 
-	err := os.WriteFile(filepath.Join(migDir, mig1), []byte(`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);`), 0644)
+	err := os.WriteFile(filepath.Join(migDir, mig1), []byte(`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);`), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = os.WriteFile(filepath.Join(migDir, mig2), []byte(`ALTER TABLE users ADD COLUMN email TEXT;`), 0644)
+	err = os.WriteFile(filepath.Join(migDir, mig2), []byte(`ALTER TABLE users ADD COLUMN email TEXT;`), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestRunMigrations(t *testing.T) {
 	}
 
 	// Verify table exists and has column
-	_, err = db.Exec("INSERT INTO users (name, email) VALUES (?, ?)", "test", "test@example.com")
+	_, err = db.Exec("INSERT INTO users (usernname, email) VALUES (?, ?)", "test", "test@example.com")
 	if err != nil {
 		t.Fatalf("Failed to insert into migrated table: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestRunMigrations(t *testing.T) {
 
 	// Add a new migration
 	mig3 := "3_new_table.sql"
-	err = os.WriteFile(filepath.Join(migDir, mig3), []byte(`CREATE TABLE logs (id INTEGER PRIMARY KEY);`), 0644)
+	err = os.WriteFile(filepath.Join(migDir, mig3), []byte(`CREATE TABLE logs (id INTEGER PRIMARY KEY);`), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestRunMigrations_InvalidFile(t *testing.T) {
 	db := setupMigrateTestDB(t)
 
 	migDir := t.TempDir()
-	err := os.WriteFile(filepath.Join(migDir, "invalid.sql"), []byte(`CREATE TABLE x (id);`), 0644)
+	err := os.WriteFile(filepath.Join(migDir, "invalid.sql"), []byte(`CREATE TABLE x (id);`), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,12 +154,12 @@ func TestRunMigrations_FailingMigration(t *testing.T) {
 
 	migDir := t.TempDir()
 	// Valid migration
-	err := os.WriteFile(filepath.Join(migDir, "1_valid.sql"), []byte(`CREATE TABLE valid (id INTEGER);`), 0644)
+	err := os.WriteFile(filepath.Join(migDir, "1_valid.sql"), []byte(`CREATE TABLE valid (id INTEGER);`), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Failing migration (invalid SQL)
-	err = os.WriteFile(filepath.Join(migDir, "2_invalid.sql"), []byte(`CREATE TABLE invalid (id INTEGER;`), 0644) // Missing closing paren
+	err = os.WriteFile(filepath.Join(migDir, "2_invalid.sql"), []byte(`CREATE TABLE invalid (id INTEGER;`), 0o644) // Missing closing paren
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestRunMigrations_FailingMigration(t *testing.T) {
 	// Verify that the first migration was applied (Wait, RunMigrations stops at the first failure)
 	// But it should have applied the first one because it's a loop.
 	// Actually, RunMigrations processes files one by one.
-	
+
 	var count int
 	err = db.QueryRow("SELECT count(*) FROM migrations").Scan(&count)
 	if err != nil {
