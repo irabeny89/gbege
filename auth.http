@@ -6,7 +6,7 @@
 @user2 = dev2
 @pass2 = Dev@Gbege#1
 
-@token =
+@token = CZQCuRgBP6C2tobhSwpgJw==
 
 POST {{host}}/auth/signup
 Content-Type: application/json

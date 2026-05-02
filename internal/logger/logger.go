@@ -15,3 +15,7 @@ func SetLevel(level slog.Level) {
 		Level: level,
 	}))
 }
+
+func WithAttrs(attrs ...any) {
+	Log = Log.With(attrs...)
+}

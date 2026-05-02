@@ -11,13 +11,13 @@ import (
 // MARK: - Type, Const & Var
 
 type User struct {
-	Id        int64          `json:"id"`
-	Photo     sql.NullString `json:"photo,omitempty"`
-	Username  string         `json:"name"`
-	Password  string         `json:"-"`
-	DeletedAt sql.NullTime   `json:"deletedAt,omitempty"`
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
+	Id        int64      `json:"id"`
+	Photo     *string    `json:"photo,omitempty"`
+	Username  string     `json:"name"`
+	Password  string     `json:"-"`
+	DeletedAt *time.Time `json:"deletedAt,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
+	UpdatedAt time.Time  `json:"updatedAt"`
 }
 
 // MARK: - Save
@@ -45,7 +45,7 @@ func SaveUser(db *gosqlitex.DbClient, username, plainPassword string) (*User, er
 func GetUser(db *gosqlitex.DbClient, id int) (*User, error) {
 	u := new(User)
 	err := db.QueryRow(`
-		SELECT id, COALESCE(photo, ''), username, password, deleted_at, created_at, updated_at
+		SELECT id, photo, username, password, deleted_at, created_at, updated_at
 		FROM users
 		WHERE id = ?
 	`, id).Scan(&u.Id, &u.Photo, &u.Username, &u.Password, &u.DeletedAt, &u.CreatedAt, &u.UpdatedAt)
@@ -56,7 +56,7 @@ func GetUser(db *gosqlitex.DbClient, id int) (*User, error) {
 		return nil, err
 	}
 	// If the user is deleted(soft), return nil
-	if u.DeletedAt.Valid {
+	if u.DeletedAt != nil {
 		return nil, nil
 	}
 	return u, nil
@@ -67,7 +67,7 @@ func GetUser(db *gosqlitex.DbClient, id int) (*User, error) {
 func GetUserByUsername(db *gosqlitex.DbClient, alias string) (*User, error) {
 	u := new(User)
 	err := db.QueryRow(`
-		SELECT id, COALESCE(photo, ''), username, password, deleted_at, created_at, updated_at
+		SELECT id, photo, username, password, deleted_at, created_at, updated_at
 		FROM users
 		WHERE username = ?
 	`, alias).Scan(&u.Id, &u.Photo, &u.Username, &u.Password, &u.DeletedAt, &u.CreatedAt, &u.UpdatedAt)
@@ -78,7 +78,7 @@ func GetUserByUsername(db *gosqlitex.DbClient, alias string) (*User, error) {
 		return nil, err
 	}
 	// If the user is deleted(soft), return nil
-	if u.DeletedAt.Valid {
+	if u.DeletedAt != nil {
 		return nil, nil
 	}
 	return u, nil

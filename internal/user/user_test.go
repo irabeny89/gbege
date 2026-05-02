@@ -72,8 +72,8 @@ func TestUserLifecycle(t *testing.T) {
 	}
 
 	updatedUser, _ := GetUser(db, int(userById.Id))
-	if !updatedUser.Photo.Valid || updatedUser.Photo.String != newPhoto {
-		t.Errorf("Expected photo %s, got %s", newPhoto, updatedUser.Photo.String)
+	if updatedUser.Photo == nil || *updatedUser.Photo != newPhoto {
+		t.Errorf("Expected photo %s, got %v", newPhoto, updatedUser.Photo)
 	}
 
 	// Test SoftDeleteUser
