@@ -13,7 +13,7 @@ import (
 type User struct {
 	Id        int64     `json:"id"`
 	Photo     string    `json:"photo"`
-	Username      string    `json:"name"`
+	Username  string    `json:"name"`
 	Password  string    `json:"password"`
 	DeletedAt time.Time `json:"deletedAt"`
 	CreatedAt time.Time `json:"createdAt"`

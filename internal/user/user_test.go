@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/irabeny89/gbege/internal/migrate"
 	"github.com/irabeny89/gosqlitex"
 	_ "modernc.org/sqlite"
 )
@@ -22,7 +21,7 @@ func setupUserTestDB(t *testing.T) *gosqlitex.DbClient {
 	}
 
 	// Run migrations to setup the schema
-	err = migrate.RunMigrations(context.Background(), "../../migrations", "_", db)
+	err = db.RunMigrationsContext(context.Background(), "../../migrations", "_")
 	if err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}

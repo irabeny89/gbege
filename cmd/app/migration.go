@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/irabeny89/gbege/internal/logger"
-	"github.com/irabeny89/gbege/internal/migrate"
 	"github.com/irabeny89/gosqlitex"
 )
 
@@ -19,5 +18,5 @@ func handleMigrations(ctx context.Context, db *gosqlitex.DbClient) error {
 		sep = "_"
 	}
 	logger.Log.Info("Running migrations", "dir", migDir, "sep", sep)
-	return migrate.RunMigrations(ctx, migDir, sep, db)
+	return db.RunMigrationsContext(ctx, migDir, sep)
 }

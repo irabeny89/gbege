@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/irabeny89/gbege/internal/migrate"
 	"github.com/irabeny89/gbege/internal/user"
 	"github.com/irabeny89/gosqlitex"
 	_ "modernc.org/sqlite"
@@ -22,7 +21,7 @@ func setupSessionTestDB(t *testing.T) *gosqlitex.DbClient {
 	}
 
 	// Create sessions and users tables via migrations
-	err = migrate.RunMigrations(context.Background(), "../../migrations", "_", db)
+	err = db.RunMigrationsContext(context.Background(), "../../migrations", "_")
 	if err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}

@@ -54,9 +54,13 @@ coverage:
 	go test -v -cover -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out
 
+# Run the server
+run:
+	go run ./cmd/app
+
 # Build the binary
 build:
-	go build -ldflags="-w -s" -o $(BINARY_NAME) .
+	go build -ldflags="-w -s" -o $(BINARY_NAME) ./cmd/app
 
 # Run the binary
 run-build:

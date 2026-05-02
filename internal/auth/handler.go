@@ -177,16 +177,20 @@ func HandleMe(db *gosqlitex.DbClient, w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		logger.Log.Error("Invalid authorization header")
 		api.Fail(w, http.StatusUnauthorized, "Unauthorized", nil)
+		return
 	}
 	ses, err := session.GetSession(db, []byte(token))
 	if err != nil {
 		logger.Log.Error("Session not found", "id", token)
 		api.Fail(w, http.StatusNotFound, "User not found", err)
+		return
 	}
 	u, err := user.GetUser(db, int(ses.UserId))
 	if err != nil {
 		logger.Log.Error("Session not found", "id", token)
 		api.Fail(w, http.StatusNotFound, "User not found", err)
+		return
 	}
 	api.Success(w, http.StatusOK, "User found", u)
+	return
 }
