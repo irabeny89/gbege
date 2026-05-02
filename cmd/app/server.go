@@ -9,27 +9,22 @@ import (
 	"github.com/irabeny89/gbege/internal/api"
 	"github.com/irabeny89/gbege/internal/auth"
 	"github.com/irabeny89/gbege/internal/logger"
+	"github.com/irabeny89/gbege/internal/middleware"
 
 	"github.com/irabeny89/gosqlitex"
 )
 
 func setupHandlers(db *gosqlitex.DbClient) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		api.Success(w, http.StatusOK, "Server running", nil)
 	})
-	mux.HandleFunc("/auth/login", func(w http.ResponseWriter, r *http.Request) {
-		auth.HandleLogin(db, w, r)
-	})
-	mux.HandleFunc("/auth/signup", func(w http.ResponseWriter, r *http.Request) {
-		auth.HandleSignUp(db, w, r)
-	})
-	mux.HandleFunc("/auth/logout", func(w http.ResponseWriter, r *http.Request) {
-		auth.HandleLogout(db, w, r)
-	})
-	mux.HandleFunc("/auth/me", func(w http.ResponseWriter, r *http.Request) {
-		auth.HandleMe(db, w, r)
-	})
+	// MARK: - Auth routes
+	h := auth.NewHandler(db)
+	mux.Handle("POST /auth/login", middleware.Tracing(http.HandlerFunc(h.HandleLogin)))
+	mux.Handle("POST /auth/signup", middleware.Tracing(http.HandlerFunc(h.HandleSignUp)))
+	mux.Handle("POST /auth/logout", middleware.Tracing(http.HandlerFunc(h.HandleLogout)))
+	mux.Handle("GET /auth/me", middleware.Tracing(http.HandlerFunc(h.HandleMe)))
 
 	return mux
 }

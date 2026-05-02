@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -71,8 +72,8 @@ func TestUserLifecycle(t *testing.T) {
 	}
 
 	updatedUser, _ := GetUser(db, int(userById.Id))
-	if updatedUser.Photo != newPhoto {
-		t.Errorf("Expected photo %s, got %s", newPhoto, updatedUser.Photo)
+	if !updatedUser.Photo.Valid || updatedUser.Photo.String != newPhoto {
+		t.Errorf("Expected photo %s, got %s", newPhoto, updatedUser.Photo.String)
 	}
 
 	// Test SoftDeleteUser
@@ -82,8 +83,18 @@ func TestUserLifecycle(t *testing.T) {
 	}
 
 	deletedUser, _ := GetUser(db, int(userById.Id))
-	if deletedUser.DeletedAt.IsZero() {
-		t.Error("Expected DeletedAt to be set")
+	if deletedUser != nil {
+		t.Error("Expected GetUser to return nil for soft-deleted user")
+	}
+
+	// Verify DeletedAt directly in DB
+	var deletedAt sql.NullTime
+	err = db.QueryRow("SELECT deleted_at FROM users WHERE id = ?", userById.Id).Scan(&deletedAt)
+	if err != nil {
+		t.Fatalf("Failed to query deleted_at: %v", err)
+	}
+	if !deletedAt.Valid {
+		t.Error("Expected deleted_at to be set in database")
 	}
 
 	// Test RemoveUser
@@ -92,9 +103,12 @@ func TestUserLifecycle(t *testing.T) {
 		t.Fatalf("RemoveUser failed: %v", err)
 	}
 
-	_, err = GetUser(db, int(userById.Id))
-	if err == nil {
-		t.Error("Expected error when getting removed user, but got nil")
+	u, err := GetUser(db, int(userById.Id))
+	if err != nil {
+		t.Fatalf("GetUser failed: %v", err)
+	}
+	if u != nil {
+		t.Error("Expected GetUser to return nil for removed user, but it still exists")
 	}
 }
 
@@ -133,8 +147,11 @@ func TestCleanupDeletedUsers(t *testing.T) {
 	}
 
 	// Verify old user is gone
-	_, err = GetUserByUsername(db, oldUser)
-	if err == nil {
+	u_old, err := GetUserByUsername(db, oldUser)
+	if err != nil {
+		t.Fatalf("GetUserByUsername failed: %v", err)
+	}
+	if u_old != nil {
 		t.Error("Expected old user to be cleaned up, but it still exists")
 	}
 

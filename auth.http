@@ -1,0 +1,42 @@
+# signup
+@host = http://localhost:8080
+@user1 = dev1
+@pass1 = Dev@Gbege#1
+
+@user2 = dev2
+@pass2 = Dev@Gbege#1
+
+@token =
+
+POST {{host}}/auth/signup
+Content-Type: application/json
+
+{
+    "username": "dev1",
+    "password": "Dev@Gbege#1"
+}
+
+###
+
+# login
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+    "username": "dev1",
+    "password": "Dev@Gbege#1"
+}
+
+###
+
+# me
+GET {{host}}/auth/me
+Authorization: Bearer {{token}}
+
+###
+
+# logout
+POST {{host}}/auth/logout
+Authorization: Bearer {{token}}
+
+###

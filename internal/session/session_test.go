@@ -67,9 +67,12 @@ func TestSessionLifecycle(t *testing.T) {
 		t.Fatalf("DeleteSession failed: %v", err)
 	}
 
-	_, err = GetSession(db, session.Id)
-	if err == nil {
-		t.Error("Expected error when getting deleted session, but got nil")
+	s, err := GetSession(db, session.Id)
+	if err != nil {
+		t.Fatalf("GetSession failed: %v", err)
+	}
+	if s != nil {
+		t.Error("Expected session to be deleted, but it was found")
 	}
 }
 
@@ -117,8 +120,11 @@ func TestDeleteExpiredSessions(t *testing.T) {
 		t.Fatalf("DeleteExpiredSessions failed: %v", err)
 	}
 
-	_, err = GetSession(db, expiredId)
-	if err == nil {
+	s2, err := GetSession(db, expiredId)
+	if err != nil {
+		t.Fatalf("GetSession failed: %v", err)
+	}
+	if s2 != nil {
 		t.Error("Expected expired session to be deleted, but it was found")
 	}
 

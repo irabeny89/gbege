@@ -18,5 +18,10 @@ func handleMigrations(ctx context.Context, db *gosqlitex.DbClient) error {
 		sep = "_"
 	}
 	logger.Log.Info("Running migrations", "dir", migDir, "sep", sep)
-	return db.RunMigrationsContext(ctx, migDir, sep)
+	err := db.RunMigrationsContext(ctx, migDir, sep)
+	if err != nil {
+		return err
+	}
+	logger.Log.Info("Migrations completed")
+	return nil
 }
